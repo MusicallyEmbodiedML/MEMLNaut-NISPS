@@ -34,12 +34,12 @@ public:
         VoiceSpaceFn mappingFunction = nullptr;
     };
 
-    std::array<VoiceSpace, 2> voiceSpaces;
+    std::array<VoiceSpace, 5> voiceSpaces;
     
     VoiceSpaceFn currentVoiceSpace;
 
     PAFSynthAudioApp() : AudioAppBase<NPARAMS>() {
-#if 0
+#if 1
         auto voiceSpace1 = [this](const std::array<float, NPARAMS>& params) {
             p0Gain=1.f;
             p1Gain=1.f;
@@ -200,11 +200,6 @@ public:
             fbSmoothAlpha=0.5f;
         };  
 
-        voiceSpaces[0] = {"default", voiceSpace1};
-        voiceSpaces[1] = {"bright", voiceSpace2};
-        voiceSpaces[2] = {"perc", voiceSpacePerc};
-
-        currentVoiceSpace = voiceSpaces[2].mappingFunction;   
 #endif
         auto voiceSpaceSingle1 = [this](const std::array<float, NPARAMS>& params) {
             p0Gain=1.f;
@@ -212,12 +207,12 @@ public:
             p2Gain=0.f;
             p3Gain=0.f;
 
-            detune1 = 1.0f;
-            detune2 = 1.1f;
-            detune3 = 1.2f;
+            // detune1 = 1.0f;
+            // detune2 = 1.1f;
+            // detune3 = 1.2f;
             
-            paf0_cf = (params[0]  * 2.f);
-            paf0_bw = 10.f + (params[0] * 400.f);
+            paf0_cf = (params[0]  * 2.0f);
+            paf0_bw = 10.f + (params[0] * 500.f);
             // paf1_bw = 10.f + (params[6] * 50.f);
             // paf2_bw = 10.f + (params[7] * 50.f);
             // paf3_bw = 10.f + (params[22] * 100.f);
@@ -232,7 +227,7 @@ public:
             // paf2_vfr = (params[13] * params[13] * 15.f);
             // paf3_vfr = (params[24] * params[24] * 15.f);
 
-            paf0_shift =  -500.f + (params[0] * 500.f);
+            paf0_shift =  -20.f + (params[0] * 40.f);
             // paf1_shift = -300.f + (params[15] * 300.f);
             // paf2_shift = -300.f + (params[16] * 300.f);
             // paf3_shift = -300.f + (params[25] * 300.f);
@@ -242,7 +237,7 @@ public:
             // euclidN = static_cast<size_t>(2 + (params[19] * 5));
             dlfb = 0.f;
 
-            env.setup(params[1] * 20.f , params[2] * 200.f, params[3] * 0.4f, params[4] * 300.f, sampleRatef );
+            env.setup(1.f+(params[1] * 20.f) , 1.f + (params[2] * 200.f), params[3] * 0.4f, 10.f + (params[4] * 300.f), sampleRatef );
 
             sineShapeGain = params[5] * params[5] * 0.2f;
             sineShapeASym = 0.f;
@@ -255,9 +250,82 @@ public:
             fbSmoothAlpha=0.f;
         };  
 
-        voiceSpaces[0] = {"test", voiceSpaceSingle1};
+        auto voiceSpaceQuadDetune = [this](const std::array<float, NPARAMS>& params) {
+            p0Gain=1.f;
+            p1Gain=1.f;
+            p2Gain=1.f;
+            p3Gain=0.8f;
 
-        currentVoiceSpace = voiceSpaces[0].mappingFunction;   
+
+            const float factor = 1.f + (params[17] * 0.2f);
+            detune1 = 1.f * factor;
+            detune2 = detune1 * factor;
+            detune3 = detune2 * factor;
+            
+            paf0_cf = (params[0]  * 1.0f);
+            paf1_cf = (params[0]  * 2.0f);
+            paf2_cf = (params[1]  * 3.0f);
+            paf3_cf = (params[1]  * 5.0f);
+            
+            paf0_bw = 10.f + (params[2] * 500.f);
+            paf1_bw = 10.f + (params[3] * 500.f);
+            paf2_bw = 10.f + (params[4] * 500.f);
+            paf3_bw = 10.f + (params[5] * 2000.f);
+
+            paf0_vib = (params[18] * params[18] * 0.05f);
+            paf1_vib = paf0_vib;
+            paf2_vib = 0.f;
+            paf3_vib = 0.f;
+            // paf1_vib = (params[9] * params[9] * 0.01f);
+            // paf2_vib = (params[10] * params[10] * 0.01);
+            // paf3_vib = (params[23] * params[23] * 0.01f);
+
+            paf0_vfr = (params[19] * params[19] * 15.f);
+            paf1_vfr = paf0_vfr;
+            paf2_vfr = 0.f;
+            paf3_vfr = 0.f;
+            // paf1_vfr = (params[12] * params[12] * 15.f);
+            // paf2_vfr = (params[13] * params[13] * 15.f);
+            // paf3_vfr = (params[24] * params[24] * 15.f);
+
+            paf0_shift=0.f;
+            paf1_shift=0.f;
+            paf2_shift=0.f;
+            // paf3_shift=0.f;
+
+            // paf0_shift =  -20.f + (params[6] * 40.f);
+            // paf1_shift =  -20.f + (params[7] * 40.f);
+            // paf2_shift =  -20.f + (params[8] * 40.f);
+            paf3_shift =  -40.f + (params[9] * 80.f);
+            // paf1_shift = -300.f + (params[15] * 300.f);
+            // paf2_shift = -300.f + (params[16] * 300.f);
+            // paf3_shift = -300.f + (params[25] * 300.f);
+
+            dl1mix = 0.f;
+
+            // euclidN = static_cast<size_t>(2 + (params[19] * 5));
+            dlfb = 0.f;
+
+            env.setup(1.f+(params[10] * 20.f) , 1.f + (params[11] * 200.f), params[12] * 0.4f, 10.f + (params[13] * 300.f), sampleRatef );
+
+            sineShapeGain = params[14] * params[14] * 0.2f;
+            sineShapeASym = params[15] * 0.05f;
+            sineShapeMix = params[16] * 0.3f;
+
+            rmGain = 0.f;
+            feedbackGain = 0.0f;
+
+            delayMax=1000;
+            fbSmoothAlpha=0.f;
+        };  
+
+        voiceSpaces[0] = {"default", voiceSpace1};
+        voiceSpaces[1] = {"bright", voiceSpace2};
+        voiceSpaces[2] = {"perc", voiceSpacePerc};
+        voiceSpaces[3] = {"Single", voiceSpaceSingle1};
+        voiceSpaces[4] = {"Quad", voiceSpaceQuadDetune};
+
+        currentVoiceSpace = voiceSpaces[4].mappingFunction;   
 
     };
 
@@ -393,6 +461,7 @@ public:
         return 440.0f * exp2f((note - 69) / 12.0f);
     }
 
+    size_t currNote=0;
     void loop() override {
         uint8_t midimsg[2];
         if (firstParamsReceived && queue_try_remove(&qMIDINoteOn, &midimsg)) {
@@ -403,10 +472,13 @@ public:
             noteVel = noteVel * noteVel; // Square the velocity for more pronounced effect
             newNote = true;
             env.trigger(noteVel);
+            currNote = midimsg[0];
         }
         if (firstParamsReceived && queue_try_remove(&qMIDINoteOff, &midimsg)) {
             // Serial.printf("PAFSynthAudioApp::ProcessParams - Received MIDI Note On: %d, Velocity: %d\n", midimsg[0], midimsg[1]);
-            env.release();
+            if (currNote == midimsg[0]) {
+                env.release();
+            }
         }
         AudioAppBase<NPARAMS>::loop();
     }

@@ -163,14 +163,15 @@ void setup() {
   MEMLNaut::Instance()->disp->AddView(noteTrigView);
 
   std::shared_ptr<MessageView> helpView = std::make_shared<MessageView>("Help");
-  helpView->post("PAF synth CARL");
+  helpView->post("PAF synth NISPS");
   helpView->post("TA: Down: Forget replay memory");
-  helpView->post("MA: Up: Randomise actor");
-  helpView->post("MA: Down: Randomise critic");
+  helpView->post("MA: Up: Randomise ");
+  helpView->post("MA: Down: Jolt");
   helpView->post("MB: Up: Positive reward");
   helpView->post("MB: Down: Negative reward");
-  helpView->post("Y: Optimisation rate");
-  helpView->post("Z: OU noise");
+  helpView->post("X: Learning rate");
+  helpView->post("Y: Reward Scale");
+  helpView->post("Z: Exploration noise");
   helpView->post("Joystick: Explore");
   MEMLNaut::Instance()->disp->AddView(helpView);
 
