@@ -48,7 +48,7 @@ public:
 
     void setVoiceSpace(size_t i) {
         if (i < voiceSpaces.size()) {
-            currentVoiceSpace = voiceSpaces[i];
+            currentVoiceSpace = voiceSpaces[i].mappingFunction;
         }
     }
 

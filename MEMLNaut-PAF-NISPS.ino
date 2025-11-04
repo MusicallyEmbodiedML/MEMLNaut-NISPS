@@ -10,6 +10,7 @@
 #include "src/memllib/examples/InterfaceRL.hpp"
 #include "src/memllib/hardware/memlnaut/display/XYPadView.hpp"  
 #include "src/memllib/hardware/memlnaut/display/MessageView.hpp"
+#include "src/memllib/hardware/memlnaut/display/VoiceSpaceSelectView.hpp"
 
 
 #define INTERFACE_TYPE InterfaceRL
@@ -46,6 +47,8 @@ volatile bool APP_SRAM core_0_ready = false;
 volatile bool APP_SRAM core_1_ready = false;
 volatile bool APP_SRAM serial_ready = false;
 volatile bool APP_SRAM interface_ready = false;
+
+std::array<String, PAFSynthAudioApp<>::nVoiceSpaces> voiceSpaceList;
 
 
 
@@ -160,6 +163,17 @@ void setup() {
       }
   });
 
+  std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
+  voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
+  MEMLNaut::Instance()->disp->AddView(voiceSpaceSelectView);
+  voiceSpaceSelectView->setOptions(voiceSpaceList); //set by core 1 on startup
+  voiceSpaceSelectView->setNewVoiceCallback(
+    [](size_t idx) {
+      // Serial.println(idx);
+      audio_app->setVoiceSpace(idx);
+    }
+  );
+
   MEMLNaut::Instance()->disp->AddView(noteTrigView);
 
   std::shared_ptr<MessageView> helpView = std::make_shared<MessageView>("Help");
@@ -171,7 +185,7 @@ void setup() {
   helpView->post("X: Learning rate");
   helpView->post("Y: Reward Scale");
   helpView->post("Z: Exploration noise");
-  helpView->post("Joystick: Explore");
+  helpView->post("Joystick: Explore / SW: Drag sound");
   MEMLNaut::Instance()->disp->AddView(helpView);
 
   MEMLNaut::Instance()->addSystemInfoView();
@@ -263,7 +277,7 @@ void setup1() {
   // Start audio driver
   AudioDriver::Setup();
   // AudioDriver::SetBlockCallback(audio_block_callback);
-
+  voiceSpaceList = audio_app->getVoiceSpaceNames();
 
   WRITE_VOLATILE(core_1_ready, true);
   while (!READ_VOLATILE(core_0_ready)) {
