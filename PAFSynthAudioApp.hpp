@@ -14,6 +14,14 @@
 
 #include <span>
 
+#include "voicespaces/VoiceSpace1.hpp"
+#include "voicespaces/VoiceSpace2.hpp"
+#include "voicespaces/VoiceSpacePerc.hpp"
+#include "voicespaces/VoiceSpaceSingle1.hpp"
+#include "voicespaces/VoiceSpaceQuadDetune.hpp"
+#include "voicespaces/VoiceSpaceQuadOct.hpp"
+#include "voicespaces/VoiceSpaceQuadDist.hpp"
+
 
 
 // #define ARPEGGIATOR
@@ -26,7 +34,7 @@ public:
     static constexpr size_t kN_Params = NPARAMS;
     static constexpr size_t nFREQs = 17;
     static constexpr float frequencies[nFREQs] = {100, 200, 400,800, 400, 800, 100,1600,100,400,100,50,1600,200,100,800,400};
-    static constexpr size_t nVoiceSpaces=5;
+    static constexpr size_t nVoiceSpaces=7;
 
     using VoiceSpaceFn = std::function<void(const std::array<float, NPARAMS>&)>;
     struct VoiceSpace {
@@ -53,293 +61,44 @@ public:
     }
 
     PAFSynthAudioApp() : AudioAppBase<NPARAMS>() {
-#if 1
         auto voiceSpace1 = [this](const std::array<float, NPARAMS>& params) {
-            p0Gain=1.f;
-            p1Gain=1.f;
-            p2Gain=0.f;
-            p3Gain=0.f;
-
-            detune1 = 2.0f;
-            detune2 = 1.0f;
-            detune3 = 1.0f;
-            
-            paf0_cf = (params[2]  * 1.f);
-            paf1_cf = (params[3]  * 1.f);
-            // paf2_cf = (params[4] * params[4]  * 1.f);
-            // paf3_cf = (params[21] * params[21]  * 1.f);
-
-            paf0_bw = 10.f + (params[5] * 200.f);
-            paf1_bw = 10.f + (params[6] * 200.f);
-            // paf2_bw = 0.1f + (params[7] * 2.f);
-            // paf3_bw = 0.1f + (params[22] * 2.f);
-
-            paf0_vib = params[8] * params[8] * 0.05f;
-            paf1_vib = (params[9] * params[9] * 0.05f);
-            // paf2_vib = (params[10] * params[10] * 0.99f);
-            // paf3_vib = (params[23] * params[23] * 0.99f);
-
-            paf0_vfr = (params[11] * params[11]* 5.0f);
-            paf1_vfr = (params[12] * params[12] * 5.f);
-            // paf2_vfr = (params[13] * params[13] * 10.f);
-            // paf3_vfr = (params[24] * params[24] * 10.f);
-
-            paf0_shift =  -50.f + (params[14] * 100.f);
-            paf1_shift = -50.f + (params[15] * 100.f);
-            // paf2_shift = (params[16] * 1000.f);
-            // paf3_shift = (params[25] * 1000.f);
-
-            dl1mix = params[17] * params[17] * 0.8f;
-            // dl2mix = params[18] * params[18] * 0.4f;
-            // detune = 1.0f + (params[18] * 0.1);
-
-            // euclidN = static_cast<size_t>(2 + (params[19] * 5));
-            dlfb = params[19] * 0.9f;
-
-            env.setup(params[30] * 200.f,params[20] * params[20] * 500.f,0.01 + (params[31] * 0.5f), params[32] * 500.f, sampleRatef );
-
-            sineShapeGain = params[26] * params[26];
-            sineShapeASym = params[27] * params[27] * 0.1f;
-            sineShapeMix = params[28];
-
-            rmGain = params[29] * params[29];
-            feedbackGain = 0.0f;
-
-            delayMax=1000;
-            fbSmoothAlpha=0.f;
-        };  
+            VOICE_SPACE_1_BODY
+        };
 
         auto voiceSpace2 = [this](const std::array<float, NPARAMS>& params) {
-            p0Gain=1.f;
-            p1Gain=1.f;
-            p2Gain=1.f;
-            p3Gain=1.f;
+            VOICE_SPACE_2_BODY
+        };
 
-            detune1 = 2.0f;
-            detune2 = 0.5f;
-            detune3 = 1.0f;
-            
-            paf0_cf = (params[2]  * 1.f);
-            paf1_cf = (params[3]  * 1.f);
-            paf2_cf = (params[4] * 1.f);
-            paf3_cf = (params[21] * 1.f);
-
-            paf0_bw = 10.f + (params[5] * 400.f);
-            paf1_bw = 10.f + (params[6] * 300.f);
-            paf2_bw = 10.f + (params[7] * 200.f);
-            paf3_bw = 10.f + (params[22] * 100.f);
-
-            paf0_vib = params[8] * params[8] * 0.1f;
-            paf1_vib = (params[9] * params[9] * 0.05f);
-            paf2_vib = (params[10] * params[10] * 0.05);
-            paf3_vib = (params[23] * params[23] * 0.05f);
-
-            paf0_vfr = (params[11] * params[11]* 5.0f);
-            paf1_vfr = (params[12] * params[12] * 5.f);
-            paf2_vfr = (params[13] * params[13] * 10.f);
-            paf3_vfr = (params[24] * params[24] * 10.f);
-
-            paf0_shift =  -50.f + (params[14] * 200.f);
-            paf1_shift = -50.f + (params[15] * 200.f);
-            paf2_shift = -50.f + (params[16] * 300.f);
-            paf3_shift = -50.f + (params[25] * 400.f);
-
-            dl1mix = params[17] * params[17] * 0.3f;
-
-            // euclidN = static_cast<size_t>(2 + (params[19] * 5));
-            dlfb = params[19] * 0.95f;
-
-            env.setup(params[30] * 200.f,params[20] * params[20] * 500.f,0.01 + (params[31] * 0.5f), params[32] * 500.f, sampleRatef );
-
-            sineShapeGain = params[26] * params[26];
-            sineShapeASym = params[27] * params[27] * 0.2f;
-            sineShapeMix = params[28];
-
-            rmGain = params[29] * params[29];
-            feedbackGain = 0.01f;
-
-            delayMax=3000;
-            fbSmoothAlpha=0.94f;
-        };  
         auto voiceSpacePerc = [this](const std::array<float, NPARAMS>& params) {
-            p0Gain=1.f;
-            p1Gain=1.f;
-            p2Gain=1.f;
-            p3Gain=1.f;
+            VOICE_SPACE_PERC_BODY
+        };
 
-            detune1 = 1.0f;
-            detune2 = 1.1f;
-            detune3 = 1.2f;
-            
-            paf0_cf = (params[2]  * 2.f);
-            paf1_cf = (params[3]  * 2.f);
-            paf2_cf = (params[4] * 2.f);
-            paf3_cf = (params[21] * 2.f);
-
-            paf0_bw = 10.f + (params[5] * 400.f);
-            paf1_bw = 10.f + (params[6] * 50.f);
-            paf2_bw = 10.f + (params[7] * 50.f);
-            paf3_bw = 10.f + (params[22] * 100.f);
-
-            paf0_vib = params[8] * params[8] * 0.01f;
-            paf1_vib = (params[9] * params[9] * 0.01f);
-            paf2_vib = (params[10] * params[10] * 0.01);
-            paf3_vib = (params[23] * params[23] * 0.01f);
-
-            paf0_vfr = (params[11] * params[11]* 15.0f);
-            paf1_vfr = (params[12] * params[12] * 15.f);
-            paf2_vfr = (params[13] * params[13] * 15.f);
-            paf3_vfr = (params[24] * params[24] * 15.f);
-
-            paf0_shift =  -500.f + (params[14] * 500.f);
-            paf1_shift = -300.f + (params[15] * 300.f);
-            paf2_shift = -300.f + (params[16] * 300.f);
-            paf3_shift = -300.f + (params[25] * 300.f);
-
-            dl1mix = params[17] * params[17] * 0.5f;
-
-            // euclidN = static_cast<size_t>(2 + (params[19] * 5));
-            dlfb = params[19] * 0.95f;
-
-            env.setup(params[30] * 1.f,params[20] * params[20] * 100.f,0.01 + (params[31] * 0.1f), params[32] * params[32] * 300.f, sampleRatef );
-
-            sineShapeGain = params[26];
-            sineShapeASym = params[27]* 0.5f;
-            sineShapeMix = params[28];
-
-            rmGain = params[29];
-            feedbackGain = 0.1f;
-
-            delayMax=178;
-            fbSmoothAlpha=0.5f;
-        };  
-
-#endif
         auto voiceSpaceSingle1 = [this](const std::array<float, NPARAMS>& params) {
-            p0Gain=1.f;
-            p1Gain=0.f;
-            p2Gain=0.f;
-            p3Gain=0.f;
-
-            // detune1 = 1.0f;
-            // detune2 = 1.1f;
-            // detune3 = 1.2f;
-            
-            paf0_cf = (params[0]  * 2.0f);
-            paf0_bw = 10.f + (params[0] * 500.f);
-            // paf1_bw = 10.f + (params[6] * 50.f);
-            // paf2_bw = 10.f + (params[7] * 50.f);
-            // paf3_bw = 10.f + (params[22] * 100.f);
-
-            paf0_vib = 0.f;
-            // paf1_vib = (params[9] * params[9] * 0.01f);
-            // paf2_vib = (params[10] * params[10] * 0.01);
-            // paf3_vib = (params[23] * params[23] * 0.01f);
-
-            paf0_vfr = 0.f;
-            // paf1_vfr = (params[12] * params[12] * 15.f);
-            // paf2_vfr = (params[13] * params[13] * 15.f);
-            // paf3_vfr = (params[24] * params[24] * 15.f);
-
-            paf0_shift =  -20.f + (params[0] * 40.f);
-            // paf1_shift = -300.f + (params[15] * 300.f);
-            // paf2_shift = -300.f + (params[16] * 300.f);
-            // paf3_shift = -300.f + (params[25] * 300.f);
-
-            dl1mix = 0.f;
-
-            // euclidN = static_cast<size_t>(2 + (params[19] * 5));
-            dlfb = 0.f;
-
-            env.setup(1.f+(params[1] * 20.f) , 1.f + (params[2] * 200.f), params[3] * 0.4f, 10.f + (params[4] * 300.f), sampleRatef );
-
-            sineShapeGain = params[5] * params[5] * 0.2f;
-            sineShapeASym = 0.f;
-            sineShapeMix = params[6] * 0.3f;
-
-            rmGain = 0.f;
-            feedbackGain = 0.0f;
-
-            delayMax=1000;
-            fbSmoothAlpha=0.f;
-        };  
+            VOICE_SPACE_SINGLE_1_BODY
+        };
 
         auto voiceSpaceQuadDetune = [this](const std::array<float, NPARAMS>& params) {
-            p0Gain=1.f;
-            p1Gain=1.f;
-            p2Gain=1.f;
-            p3Gain=0.8f;
+            VOICE_SPACE_QUAD_DETUNE_BODY
+        };
 
+        auto voiceSpaceQuadOct = [this](const std::array<float, NPARAMS>& params) {
+            VOICE_SPACE_QUAD_OCT_BODY
+        };
 
-            const float factor = 1.f + (params[17] * 0.2f);
-            detune1 = 1.f * factor;
-            detune2 = detune1 * factor;
-            detune3 = detune2 * factor;
-            
-            paf0_cf = (params[0]  * 1.0f);
-            paf1_cf = (params[0]  * 2.0f);
-            paf2_cf = (params[1]  * 3.0f);
-            paf3_cf = (params[1]  * 5.0f);
-            
-            paf0_bw = 10.f + (params[2] * 500.f);
-            paf1_bw = 10.f + (params[3] * 500.f);
-            paf2_bw = 10.f + (params[4] * 500.f);
-            paf3_bw = 10.f + (params[5] * 2000.f);
+        auto voiceSpaceQuadDist = [this](const std::array<float, NPARAMS>& params) {
+            VOICE_SPACE_QUAD_DIST_BODY
+        };
+        
 
-            paf0_vib = (params[18] * params[18] * 0.05f);
-            paf1_vib = paf0_vib;
-            paf2_vib = 0.f;
-            paf3_vib = 0.f;
-            // paf1_vib = (params[9] * params[9] * 0.01f);
-            // paf2_vib = (params[10] * params[10] * 0.01);
-            // paf3_vib = (params[23] * params[23] * 0.01f);
+        voiceSpaces[0] = {"Ellipticacacia", voiceSpaceQuadDetune};
+        voiceSpaces[1] = {"Rowantares", voiceSpace1};
+        voiceSpaces[2] = {"Neemeda", voiceSpace2};
+        voiceSpaces[3] = {"Aquillow", voiceSpacePerc};
+        voiceSpaces[4] = {"Magnetarch", voiceSpaceSingle1};
+        voiceSpaces[5] = {"Elderstar", voiceSpaceQuadOct};
+        voiceSpaces[6] = {"Ipeleiades", voiceSpaceQuadDist};
 
-            paf0_vfr = (params[19] * params[19] * 15.f);
-            paf1_vfr = paf0_vfr;
-            paf2_vfr = 0.f;
-            paf3_vfr = 0.f;
-            // paf1_vfr = (params[12] * params[12] * 15.f);
-            // paf2_vfr = (params[13] * params[13] * 15.f);
-            // paf3_vfr = (params[24] * params[24] * 15.f);
-
-            paf0_shift=0.f;
-            paf1_shift=0.f;
-            paf2_shift=0.f;
-            // paf3_shift=0.f;
-
-            // paf0_shift =  -20.f + (params[6] * 40.f);
-            // paf1_shift =  -20.f + (params[7] * 40.f);
-            // paf2_shift =  -20.f + (params[8] * 40.f);
-            paf3_shift =  -40.f + (params[9] * 80.f);
-            // paf1_shift = -300.f + (params[15] * 300.f);
-            // paf2_shift = -300.f + (params[16] * 300.f);
-            // paf3_shift = -300.f + (params[25] * 300.f);
-
-            dl1mix = 0.f;
-
-            // euclidN = static_cast<size_t>(2 + (params[19] * 5));
-            dlfb = 0.f;
-
-            env.setup(1.f+(params[10] * 20.f) , 1.f + (params[11] * 200.f), params[12] * 0.4f, 10.f + (params[13] * 300.f), sampleRatef );
-
-            sineShapeGain = params[14] * params[14] * 0.2f;
-            sineShapeASym = params[15] * 0.05f;
-            sineShapeMix = params[16] * 0.3f;
-
-            rmGain = 0.f;
-            feedbackGain = 0.0f;
-
-            delayMax=1000;
-            fbSmoothAlpha=0.f;
-        };  
-
-        voiceSpaces[0] = {"default", voiceSpace1};
-        voiceSpaces[1] = {"bright", voiceSpace2};
-        voiceSpaces[2] = {"perc", voiceSpacePerc};
-        voiceSpaces[3] = {"Single", voiceSpaceSingle1};
-        voiceSpaces[4] = {"Quad", voiceSpaceQuadDetune};
-
-        currentVoiceSpace = voiceSpaces[4].mappingFunction;   
+        currentVoiceSpace = voiceSpaces[0].mappingFunction;   
 
     };
 
