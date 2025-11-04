@@ -165,7 +165,8 @@ void setup() {
 
   std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
   voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
-  MEMLNaut::Instance()->disp->AddView(voiceSpaceSelectView);
+  
+  MEMLNaut::Instance()->disp->InsertViewAfter(interface->rlStatsView, voiceSpaceSelectView);
   voiceSpaceSelectView->setOptions(voiceSpaceList); //set by core 1 on startup
   voiceSpaceSelectView->setNewVoiceCallback(
     [](size_t idx) {

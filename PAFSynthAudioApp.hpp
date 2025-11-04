@@ -273,7 +273,7 @@ protected:
     maxiPAFOperator paf2;
     maxiPAFOperator paf3;
 
-    maxiDelayline<10000> dl1;
+    maxiDelayline<11000> dl1;
     // maxiDelayline<15100> dl2;
 
     maxiOsc pulse;
