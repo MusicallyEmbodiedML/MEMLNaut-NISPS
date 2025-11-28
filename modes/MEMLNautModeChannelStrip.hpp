@@ -15,6 +15,7 @@ public:
     std::array<String, ChannelStripAudioApp<>::nVoiceSpaces> voiceSpaceList;
     InterfaceRL interface;
     std::shared_ptr<InterfaceRL> interfacePtr;
+    std::shared_ptr<BlockSelectView> bypassView;
 
     void setupInterface() {
         interface.setup(kN_InputParams, ChannelStripAudioApp<>::kN_Params);
@@ -45,6 +46,46 @@ public:
     }
 
     void addViews() {
+        bypassView = std::make_shared<BlockSelectView>("Bypasses", TFT_YELLOW, 5, 80, 70, TFT_BLACK,
+        std::vector<String>{ "All", "EQ", "Comp", "PPG", "InFilt" });
+        bypassView->SetOnSelectCallback([this] (size_t id) {
+            Serial.println("Bypass toggled: " + String(id));
+            queue_t& audioAppQ = audioAppChannelStrip.controlMessageQueue;
+            switch(id) {
+                case 1:
+                    {
+                        auto msg = ChannelStripAudioApp<>::controlMessages::MSG_BYPASS_ALL;
+                        queue_try_add(&audioAppQ, &msg);
+                    }                    
+                    break;
+                case 2:
+                    {
+                        auto msg = ChannelStripAudioApp<>::controlMessages::MSG_BYPASS_EQ;
+                        queue_try_add(&audioAppQ, &msg);
+                    }
+                    break;
+                case 3:
+                    {
+                        auto msg = ChannelStripAudioApp<>::controlMessages::MSG_BYPASS_COMP;
+                        queue_try_add(&audioAppQ, &msg);
+                    }
+                    break;
+                case 4:
+                    {
+                        auto msg = ChannelStripAudioApp<>::controlMessages::MSG_BYPASS_PREPOSTGAIN;
+                        queue_try_add(&audioAppQ, &msg);
+                    }
+                    break;
+                case 5:
+                    {
+                        auto msg = ChannelStripAudioApp<>::controlMessages::MSG_BYPASS_INFILTERS;
+                        queue_try_add(&audioAppQ, &msg);
+                    }
+                    break;
+            }
+        });
+        MEMLNaut::Instance()->disp->AddView(bypassView);
+
         std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
         voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
 
@@ -71,5 +112,8 @@ public:
     }
 
     inline void processAnalysisParams() {}
+
+    void analyse(stereosample_t) {}
+
 
 };

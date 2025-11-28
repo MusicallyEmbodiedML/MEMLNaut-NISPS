@@ -124,4 +124,6 @@ public:
 
     inline void processAnalysisParams() {}
 
+    void analyse(stereosample_t) {}
+
 };

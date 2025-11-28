@@ -23,16 +23,21 @@
 #include "modes/MEMLNautModePAFSynth.hpp"
 #include "modes/MEMLNautModeChannelStrip.hpp"
 #include "modes/MEMLNautModeSoundAnalysisMIDI.hpp"
+#include "modes/MEMLNautModeXIASRI.hpp"
 
-// #define INTERFACE_TYPE InterfaceRL
+//hook up the memlnaut mode 
 
-#define MEMLNAUT_MODE_TYPE MEMLNautModeSoundAnalysisMIDI
+// #define MEMLNAUT_MODE_TYPE MEMLNautModeSoundAnalysisMIDI
+// #define MEMLNAUT_MODE_TYPE MEMLNautModeXIASRI
+#define MEMLNAUT_MODE_TYPE MEMLNautModeChannelStrip
 
-MEMLNAUT_MODE_TYPE AUDIO_MEM soundAnalysisMIDIMode;
+MEMLNAUT_MODE_TYPE AUDIO_MEM MEMLNautModeHub;
+
+// MEMLNAUT_MODE_TYPE AUDIO_MEM soundAnalysisMIDIMode;
 // MEMLNautModeChannelStrip AUDIO_MEM channelStripMode;
 // MEMLNautModePAFSynth AUDIO_MEM pafSynthMode;
 
-MEMLNautMode auto* AUDIO_MEM currentMode = &soundAnalysisMIDIMode;
+MEMLNautMode auto* AUDIO_MEM currentMode = &MEMLNautModeHub;
 
 
 #define APP_SRAM __not_in_flash("app")
@@ -54,10 +59,8 @@ uint32_t get_rosc_entropy_seed(int bits) {
 
 
 // Global objects
-// std::shared_ptr<INTERFACE_TYPE> APP_SRAM interface;
 
 std::shared_ptr<MIDIInOut> APP_SRAM midi_interf;
-
 
 // Inter-core communication
 volatile bool APP_SRAM core_0_ready = false;
@@ -68,8 +71,6 @@ volatile bool APP_SRAM interface_ready = false;
 
 
 
-// We're only bound to the joystick inputs (x, y, rotate)
-// constexpr size_t kN_InputParams = 3;
 
 // Add these macros near other globals
 #define MEMORY_BARRIER() __sync_synchronize()
@@ -99,35 +100,17 @@ void setup() {
   MEMLNaut::Initialize();
   pinMode(33, OUTPUT);
 
-  // {
-  //   auto temp_interface = std::make_shared<INTERFACE_TYPE>();
-
-  //   // temp_interface->setup(kN_InputParams, PAFSynthAudioApp<>::kN_Params);
-  //   // temp_interface->setup(kN_InputParams, ChannelStripAudioApp<>::kN_Params);
-  //   temp_interface->setup(currentMode->kN_InputParams, currentMode->getNParams());
-
-
-  //   MEMORY_BARRIER();
-  //   interface = temp_interface;
-  //   MEMORY_BARRIER();
-  // }
   currentMode->setupInterface();
+
   // Setup interface with memory barrier protection
   WRITE_VOLATILE(interface_ready, true);
-  // Bind interface after ensuring it's fully initialized
-   //TODO: control this from the mode
-  // interface->bindInterface(true);
   Serial.println("Bound interface to MEMLNaut.");
-
 
   midi_interf = std::make_shared<MIDIInOut>();
   Serial.println("MIDI setup complete.");
   if (midi_interf) {
     currentMode->setupMIDI(midi_interf);
-    // interface->bindMIDI(midi_interf);
   }
-
-
 
   WRITE_VOLATILE(core_0_ready, true);
   while (!READ_VOLATILE(core_1_ready)) {
@@ -160,12 +143,10 @@ PERF_DECLARE(MLSTATS);
 
 #define ML_INFERENCE_PERIOD_US 5000
 
-
 void loop() {
 
   PERIODIC_RUN_US(
     PERF_BEGIN(MLSTATS);
-    // currentMode->processAnalysisParams(interface);
     currentMode->processAnalysisParams();
     MEMLNaut::Instance()->loop();
     PERF_END(MLSTATS);

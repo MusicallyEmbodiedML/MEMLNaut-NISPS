@@ -427,8 +427,17 @@ class ChannelStripAudioApp : public AudioAppBase<NPARAMS>
 {
 public:
     static constexpr size_t kN_Params = NPARAMS;
-    static constexpr size_t nVoiceSpaces=3;
+    static constexpr size_t nVoiceSpaces=5;
 
+    enum class controlMessages {
+        MSG_BYPASS_ALL=0,
+        MSG_BYPASS_EQ,
+        MSG_BYPASS_COMP,
+        MSG_BYPASS_PREPOSTGAIN,
+        MSG_BYPASS_INFILTERS,
+    };
+
+    queue_t controlMessageQueue;
 
     std::array<VoiceSpace<NPARAMS>, nVoiceSpaces> voiceSpaces;
     
@@ -449,8 +458,12 @@ public:
     }
 
     ChannelStripAudioApp() : AudioAppBase<NPARAMS>() {
-        auto voiceSpaceBasic = [this](const std::array<float, NPARAMS>& params) {
-            VOICE_SPACE_CHSTRIP_BASIC_BODY
+
+        auto voiceSpaceNeve66 = [this](const std::array<float, NPARAMS>& params) {
+            VOICE_SPACE_CHSTRIP_NEVE66_BODY
+        };
+        auto voiceSpaceSSL4K = [this](const std::array<float, NPARAMS>& params) {
+            VOICE_SPACE_CHSTRIP_SSL4KGIST_BODY
         };
         auto voiceSpaceMaleVox = [this](const std::array<float, NPARAMS>& params) {
             VOICE_SPACE_CHSTRIP_MALE_VOX_BODY
@@ -458,14 +471,19 @@ public:
         auto voiceSpaceFemaleVox = [this](const std::array<float, NPARAMS>& params) {
             VOICE_SPACE_CHSTRIP_FEMALE_VOX_BODY
         };
+        auto voiceSpaceSSL9K = [this](const std::array<float, NPARAMS>& params) {
+            VOICE_SPACE_CHSTRIP_SSL9KINDA_BODY
+        };
 
-
-        voiceSpaces[0] = {"WannabeNeve66", voiceSpaceBasic};
-        voiceSpaces[1] = {"MaleVox", voiceSpaceBasic};
-        voiceSpaces[2] = {"FemaleVox", voiceSpaceBasic};
+        voiceSpaces[0] = {"WannabeNeve66", voiceSpaceNeve66};
+        voiceSpaces[1] = {"SSL 4K G-ist", voiceSpaceSSL4K};
+        voiceSpaces[2] = {"SSL 9K-inda", voiceSpaceSSL9K};
+        voiceSpaces[3] = {"MaleVox", voiceSpaceMaleVox};
+        voiceSpaces[4] = {"FemaleVox", voiceSpaceFemaleVox};
 
         currentVoiceSpace = voiceSpaces[0].mappingFunction;   
         
+        queue_init(&controlMessageQueue, sizeof(controlMessages), 1);
 
     };
 
@@ -473,19 +491,29 @@ public:
     __attribute__((hot)) stereosample_t __force_inline Process(const stereosample_t x) override
     {
         float y = x[0];
-        y = tanhf(y * preGain);
+        if (!bypassAll) {
 
-        y = inLowPass.loresChamberlain(y, inLowPassCutoff, 1.f);
-        y = inHighPass.hiresChamberlain(y, inHighPassCutoff, 1.f);
-
-        y = lowshelf.play(y);
-        y = peak0.play(y);
-        y = peak1.play(y);
-        y = highshelf.play(y);
-
-        y = dyn.compress(y, compThreshold, compRatio, 0.f);
-
-        y = tanhf(y * postGain);
+            if (!bypassPrePostGain) {
+                y = tanhf(y * preGain);
+            }
+            if (!bypassInFilters)
+            {
+                y = inLowPass.loresChamberlain(y, inLowPassCutoff, 1.f);
+                y = inHighPass.hiresChamberlain(y, inHighPassCutoff, 1.f);
+            }
+            if (!bypassEQ) {
+                y = peak0.play(y);
+                y = peak1.play(y);
+                y = lowshelf.play(y);
+                y = highshelf.play(y);
+            }
+            if (!bypassComp) {
+                y = dyn.compress(y, compThreshold, compRatio, 0.f);
+            }
+            if (!bypassPrePostGain) {
+                y = tanhf(y * postGain);
+            }
+        }
         stereosample_t ret { y, y};
         return ret;
     }
@@ -502,6 +530,28 @@ public:
 
     __attribute__((always_inline)) void ProcessParams(const std::array<float, NPARAMS>& params)
     {
+        controlMessages msg;
+        while (queue_try_remove(&controlMessageQueue, &msg)) {
+            Serial.printf("ChannelStripAudioApp: received control message %d\n", static_cast<int>(msg));
+            switch(msg) {
+                case controlMessages::MSG_BYPASS_ALL:
+                    bypassAll = !bypassAll;
+                    break;
+                case controlMessages::MSG_BYPASS_EQ:
+                    bypassEQ = !bypassEQ;
+                    break;
+                case controlMessages::MSG_BYPASS_COMP:
+                    bypassComp = !bypassComp;
+                    break;
+                case controlMessages::MSG_BYPASS_PREPOSTGAIN:
+                    bypassPrePostGain = !bypassPrePostGain;
+                    break;
+                case controlMessages::MSG_BYPASS_INFILTERS:
+                    bypassInFilters = !bypassInFilters;
+                    break;
+            }
+        }
+
         currentVoiceSpace(params);
         dyn.setAttackHigh(compAttack);
         dyn.setReleaseHigh(compRelease);
@@ -544,6 +594,12 @@ protected:
     float highShelfFreq=1000.f;
     float highShelfQ=1.f;
     float highShelfGain=1.f;
+
+    bool bypassAll = false;
+    bool bypassEQ = false;
+    bool bypassComp = false;
+    bool bypassPrePostGain = false;
+    bool bypassInFilters = false;
 
     maxiDynamicsLite dyn;
 
