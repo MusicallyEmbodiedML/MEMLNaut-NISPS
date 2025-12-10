@@ -427,7 +427,7 @@ class ChannelStripAudioApp : public AudioAppBase<NPARAMS>
 {
 public:
     static constexpr size_t kN_Params = NPARAMS;
-    static constexpr size_t nVoiceSpaces=5;
+    static constexpr size_t nVoiceSpaces=6;
 
     enum class controlMessages {
         MSG_BYPASS_ALL=0,
@@ -474,12 +474,15 @@ public:
         auto voiceSpaceSSL9K = [this](const std::array<float, NPARAMS>& params) {
             VOICE_SPACE_CHSTRIP_SSL9KINDA_BODY
         };
-
+        auto voiceSpaceNeve80 = [this](const std::array<float, NPARAMS>& params) {
+            VOICE_SPACE_CHSTRIP_NEVE_80
+        };
         voiceSpaces[0] = {"WannabeNeve66", voiceSpaceNeve66};
         voiceSpaces[1] = {"SSL 4K G-ist", voiceSpaceSSL4K};
         voiceSpaces[2] = {"SSL 9K-inda", voiceSpaceSSL9K};
         voiceSpaces[3] = {"MaleVox", voiceSpaceMaleVox};
         voiceSpaces[4] = {"FemaleVox", voiceSpaceFemaleVox};
+        voiceSpaces[5] = {"Neve 80", voiceSpaceNeve80};
 
         currentVoiceSpace = voiceSpaces[0].mappingFunction;   
         

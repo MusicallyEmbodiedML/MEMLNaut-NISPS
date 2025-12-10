@@ -50,6 +50,7 @@ public:
         std::vector<String>{ "All", "EQ", "Comp", "PPG", "InFilt" });
         bypassView->SetOnSelectCallback([this] (size_t id) {
             Serial.println("Bypass toggled: " + String(id));
+            bypassView->toggleAlt(id-1);
             queue_t& audioAppQ = audioAppChannelStrip.controlMessageQueue;
             switch(id) {
                 case 1:
