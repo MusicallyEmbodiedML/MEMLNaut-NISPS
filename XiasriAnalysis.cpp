@@ -6,6 +6,8 @@
 #include "src/memllib/utils/Maths.hpp"
 #include "src/memllib/PicoDefs.hpp"
 
+#define COMMONHPFFREQ 20.f
+#define ZXFREQ 4000.f
 
 XiasriAnalysis::XiasriAnalysis(const float sample_rate) :
     sample_rate_(sample_rate),
@@ -13,9 +15,9 @@ XiasriAnalysis::XiasriAnalysis(const float sample_rate) :
     zc_median_filter_(kZC_MedianFilterSize) {
 
     // Initialize filters and detectors
-    common_hpf_.set(maxiBiquad::filterTypes::HIGHPASS, 20.f, 0.707f, 0);
+    common_hpf_.set(maxiBiquad::filterTypes::HIGHPASS, COMMONHPFFREQ, 0.707f, 0);
     // Zero crossing
-    zc_lpf_.set(maxiBiquad::filterTypes::LOWPASS, 4000.0f, 0.707f, 0);
+    zc_lpf_.set(maxiBiquad::filterTypes::LOWPASS, ZXFREQ, 0.707f, 0);
     elapsed_samples_ = 0;
     // Envelope follower
     ef_follower_.setAttack(10.0f);
@@ -33,20 +35,28 @@ XiasriAnalysis::XiasriAnalysis(const float sample_rate) :
 
 void XiasriAnalysis::ReinitFilters() {
     // Reinitialize all filters with correct maxiSettings sample rate
-    common_hpf_.set(maxiBiquad::filterTypes::HIGHPASS, 20.f, 0.707f, 0);
-    zc_lpf_.set(maxiBiquad::filterTypes::LOWPASS, 4000.0f, 0.707f, 0);
+    common_hpf_.set(maxiBiquad::filterTypes::HIGHPASS, COMMONHPFFREQ, 0.707f, 0);
+    zc_lpf_.set(maxiBiquad::filterTypes::LOWPASS, ZXFREQ, 0.707f, 0);
     br_lpf1_.set(maxiBiquad::filterTypes::LOWPASS, 1000.0f, 0.707f, 0);
     br_hpf2_.set(maxiBiquad::filterTypes::HIGHPASS, 1000.0f, 0.707f, 0);
     br_lpf2_.set(maxiBiquad::filterTypes::LOWPASS, 4000.0f, 0.707f, 0);
+    ef_follower_.setAttack(10.0f);
+    ef_follower_.setRelease(100.0f);
+    for (size_t i = 0; i < kBR_NBands; ++i) {
+        br_follower_[i].setAttack(10.f);
+        br_follower_[i].setRelease(100.f);
+    }
+
 }
 
 // Use fast approximation (~10 cycles):
-__force_inline float fast_log2(float x) {
-    static constexpr float INV_MANTISSA_SCALE = 1.0f / 8388608.0f;  // 1/(2^23)
-    union { float f; uint32_t i; } u = {x};
-    return (float)(((u.i >> 23) & 0xFF) - 127) + 
-           (float)(u.i & 0x7FFFFF) * INV_MANTISSA_SCALE;  // Multiply instead of divide
-}
+// __force_inline float fast_log2(float x) {
+//     static constexpr float INV_MANTISSA_SCALE = 1.0f / 8388608.0f;
+//     uint32_t bits;
+//     memcpy(&bits, &x, sizeof(float));  // Standards-compliant type punning
+//     return (float)(((bits >> 23) & 0xFF) - 127) + 
+//            (float)(bits & 0x7FFFFF) * INV_MANTISSA_SCALE;
+// }
 
 inline float logEnvelopeFast(float linearEnv) {
     // -60 dBFS corresponds to a linear amplitude ratio of 10^(-60/20) = 10^(-3) = 0.001
@@ -69,10 +79,16 @@ inline float logEnvelopeFast(float linearEnv) {
     // Clamp input to minimum envelope value
     linearEnv = (linearEnv > MIN_ENV) ? linearEnv : MIN_ENV;
 
-    float log2_val = fast_log2(linearEnv);
+    float log2_val = log2f(linearEnv);
 
     // Map to [0,1]: (log2_val - log2_min) / (log2_max - log2_min)
     float y = (log2_val - LOG2_MIN_ENV) * INV_LOG_RANGE;
+
+    // PERIODIC_RUN(
+    //     Serial.printf("%f %f %f\n", linearEnv, log2_val, y);
+    //     ,100
+    // );
+
 
     // Clamp to [0,1] range (should be unnecessary given our math, but safety first)
     y = (y > 1.0f) ? 1.0f : y;
@@ -149,7 +165,7 @@ XiasriAnalysis::parameters_t AUDIO_FUNC(XiasriAnalysis::Process)(const float x) 
     params.energy = ef_y;
     params.attack = ef_d_dy;
     params.brightness = br_high;
-    params.energy_crude = fabsf(x);  // Use fabsf instead of std::abs
+    params.energy_crude = fabsf(x);  
     
     return params;
 }

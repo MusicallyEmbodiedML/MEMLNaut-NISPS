@@ -21,9 +21,9 @@ https://opensource.org/licenses/MIT.
 /** Shift can be 30-100 ms lets just start with 50 for now.
 0.050 * SR = 2400 samples (at 48kHz)
 */
-#define SHIFT_BUFFER_SIZE 16384
-//#define SHIFT_BUFFER_SIZE 4800
-//#define SHIFT_BUFFER_SIZE 8192
+// #define SHIFT_BUFFER_SIZE 16384
+// #define SHIFT_BUFFER_SIZE 4800
+#define SHIFT_BUFFER_SIZE 8192
 //#define SHIFT_BUFFER_SIZE 1024
 
 namespace daisysp

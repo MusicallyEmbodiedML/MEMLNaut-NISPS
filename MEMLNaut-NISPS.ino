@@ -13,7 +13,6 @@
 #include "ChannelStripAudioApp.hpp"
 
 //interface
-// #include "src/memllib/examples/InterfaceRL.hpp"
 #include "src/memllib/hardware/memlnaut/display/XYPadView.hpp"
 #include "src/memllib/hardware/memlnaut/display/MessageView.hpp"
 #include "src/memllib/hardware/memlnaut/display/VoiceSpaceSelectView.hpp"
@@ -30,19 +29,15 @@
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeSoundAnalysisMIDI
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeXIASRI
 #define MEMLNAUT_MODE_TYPE MEMLNautModeChannelStrip
+// #define MEMLNAUT_MODE_TYPE MEMLNautModePAFSynth
 
 MEMLNAUT_MODE_TYPE AUDIO_MEM MEMLNautModeHub;
-
-// MEMLNAUT_MODE_TYPE AUDIO_MEM soundAnalysisMIDIMode;
-// MEMLNautModeChannelStrip AUDIO_MEM channelStripMode;
-// MEMLNautModePAFSynth AUDIO_MEM pafSynthMode;
 
 MEMLNautMode auto* AUDIO_MEM currentMode = &MEMLNautModeHub;
 
 
 #define APP_SRAM __not_in_flash("app")
 
-bool core1_disable_systick = true;
 bool core1_separate_stack = true;
 
 uint32_t get_rosc_entropy_seed(int bits) {

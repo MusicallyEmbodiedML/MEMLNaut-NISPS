@@ -42,7 +42,7 @@ public:
         midi_interf = new_midi_interf;
         midi_interf->Setup(0);
         midi_interf->SetMIDISendChannel(1);
-        interface.bindMIDI(midi_interf);
+        interface.bindMIDI(midi_interf, true);
     }
 
     void addViews() {
