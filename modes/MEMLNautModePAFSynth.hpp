@@ -12,7 +12,7 @@
 
 class MEMLNautModePAFSynth {
 public:
-    constexpr static size_t kN_InputParams = 3; // joystick x, y, rotate
+    constexpr static size_t kN_InputParams = 4; // joystick x, y, rotate
 
     inline static PAFSynthAudioApp<> audioAppPAFSynth;
     std::array<String, PAFSynthAudioApp<>::nVoiceSpaces> voiceSpaceList;
@@ -22,7 +22,7 @@ public:
 
     void setupInterface() {
         interface.setup(kN_InputParams, PAFSynthAudioApp<>::kN_Params);
-        interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK);
+        interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true);
         interfacePtr = make_non_owning(interface);    
     }
 

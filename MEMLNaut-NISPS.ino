@@ -27,8 +27,8 @@
 //hook up the memlnaut mode 
 
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeSoundAnalysisMIDI
-// #define MEMLNAUT_MODE_TYPE MEMLNautModeXIASRI
-#define MEMLNAUT_MODE_TYPE MEMLNautModeChannelStrip
+#define MEMLNAUT_MODE_TYPE MEMLNautModeXIASRI
+// #define MEMLNAUT_MODE_TYPE MEMLNautModeChannelStrip
 // #define MEMLNAUT_MODE_TYPE MEMLNautModePAFSynth
 
 MEMLNAUT_MODE_TYPE AUDIO_MEM MEMLNautModeHub;
@@ -86,6 +86,9 @@ void setup() {
   uint32_t seed = get_rosc_entropy_seed(32);
   srand(seed);
 
+  midi_interf = std::make_shared<MIDIInOut>();
+  // Serial.println("MIDI setup complete.");
+
   Serial.begin(115200);
   // while (!Serial) {}
   Serial.println("Serial initialised.");
@@ -101,8 +104,6 @@ void setup() {
   WRITE_VOLATILE(interface_ready, true);
   Serial.println("Bound interface to MEMLNaut.");
 
-  midi_interf = std::make_shared<MIDIInOut>();
-  Serial.println("MIDI setup complete.");
   if (midi_interf) {
     currentMode->setupMIDI(midi_interf);
   }
