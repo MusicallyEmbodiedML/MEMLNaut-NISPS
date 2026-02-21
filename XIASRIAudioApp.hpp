@@ -59,7 +59,7 @@ public:
     __attribute__((hot)) stereosample_t __force_inline Process(const stereosample_t x) override
     {
         float mix = x.L + x.R;
-        mix *= 2.0f;
+        // mix *= 2.0f;
 
         smoother.Process(neuralNetOutputs.data(), smoothParams.data());
 
@@ -162,10 +162,13 @@ public:
 
         y = y + d1 + d2 + d3;
 
-        // Mix dry
-        y = (y * wetdry_mix_) + (mix * (1.f - wetdry_mix_));
+        // y = notch.play(y, 0,0,0,1);
+        y = lpf.loresChamberlain(y, 5000.f, 0.7f);
 
-        y = tanhf(y*1.2f);
+        // Mix dry
+        // y = (y * wetdry_mix_) + (mix * (1.f - wetdry_mix_));
+
+        // y = tanhf(y*1.2f);
 
         stereosample_t ret { y, y };
         return ret;
@@ -176,6 +179,8 @@ public:
         AudioAppBase<NPARAMS>::Setup(sample_rate, interface);
         maxiSettings::sampleRate = sample_rate;
         pitchshifter_.Init(sample_rate);
+        notch.setResonance(0.7f);
+        notch.setCutoff(8344.f);
     }
 
     __attribute__((always_inline)) void ProcessParams(const std::array<float, NPARAMS>& params)
@@ -216,6 +221,10 @@ protected:
     maxiReverbFilters<500> allp6;
     maxiReverbFilters<200> comb1;
     maxiReverbFilters<900> comb2;
+
+    maxiFilter lpf;
+
+    maxiSVF notch;
 
 
 
