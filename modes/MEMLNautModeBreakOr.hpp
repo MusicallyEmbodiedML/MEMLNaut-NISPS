@@ -77,37 +77,5 @@ public:
 };
 
 
-/*
-    // BODY
-    Value result = Value::nil();
-
-    auto ratios           = args[0].as_sequential();
-    const auto pulseWidth = args[1].as_float();
-    const auto phase      = args[2].as_float();
-
-    double trig     = 0;
-    double ratioSum = 0;
-    for (Value v : ratios)
-    {
-        ratioSum += v.as_float();
-    }
-    double phaseAdj           = ratioSum * phase;
-    double accumulatedSum     = 0;
-    double lastAccumulatedSum = 0;
-    for (Value v : ratios)
-    {
-        accumulatedSum += v.as_float();
-        if (phaseAdj <= accumulatedSum)
-        {
-            // check pulse width
-            double beatPhase = (phaseAdj - lastAccumulatedSum) /
-                               (accumulatedSum - lastAccumulatedSum);
-            trig = beatPhase <= pulseWidth;
-            break;
-        }
-        lastAccumulatedSum = accumulatedSum;
-    }
-    result = Value(trig);
-*/
 
 #endif // MEMLNAUT_MODE_RHYTHM_BOX_HPP

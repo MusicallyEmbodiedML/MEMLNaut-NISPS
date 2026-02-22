@@ -16,10 +16,42 @@
 
 #include "../../voicespaces/VoiceSpaces.hpp"
 
+struct ratioSeqState {
+    std::array<float, 3> ratios{1.f};
+    float phasor=0.f;
+    float phasorInc=0.f;
+    bool lastTrig = false;
+    float phasorMul = 1.f;
+    float ratioSum=1.f;
+    int midiNote = 36;
+    float pulseWidth = 0.5f;
+};
+
+template<size_t seqLength>
+inline bool __not_in_flash_func(ratioSeq)(ratioSeqState &seq) {
+    bool trig     = 0;
+    float phaseAdj           = seq.ratioSum * seq.phasor;
+    float accumulatedSum     = 0;
+    float lastAccumulatedSum = 0;
+    for (size_t v : seq.ratios)
+    {
+        accumulatedSum += v;
+        if (phaseAdj <= accumulatedSum)
+        {
+            // check pulse width
+            //TODO: could precalc acc-lastacc
+            float beatPhase = (phaseAdj - lastAccumulatedSum) /
+                               (accumulatedSum - lastAccumulatedSum);
+            trig = beatPhase <= seq.pulseWidth;
+            break;
+        }
+        lastAccumulatedSum = accumulatedSum;
+    }
+    return trig;
+}
 
 
-template<size_t NPARAMS=33>
-
+template<size_t NPARAMS=50, size_t NSEQUENCES=10>
 class BreakOrAudioApp : public AudioAppBase<NPARAMS>
 {
 public:
@@ -48,7 +80,6 @@ public:
 
     BreakOrAudioApp() : AudioAppBase<NPARAMS>() {
         // currentVoiceSpace = voiceSpaces[0].mappingFunction;   
-
     };
 
     bool __force_inline euclidean(float phase, const size_t n, const size_t k, const size_t offset, const float pulseWidth)
@@ -67,12 +98,31 @@ public:
 
     stereosample_t __force_inline Process(const stereosample_t x) override
     {
-        phasor0 += 1.f;
-        if (phasor0>=48000.f) {
-            phasor0-=48000.f;
-            midiIO->queueNoteOn(36, 127);
+        if (sequencingSampleCounter==0) {
+            for(auto &seq: ratioSeqStates) {
+                //update phasor
+                seq.phasor += (seq.phasorInc * seq.phasorMul);
+                if (seq.phasor >= 1.f) {
+                    seq.phasor -= 1.f;
+                }
+                bool trig = ratioSeq<3>(seq);
+                if (trig && !seq.lastTrig) {
+                    if (trig) {
+                        midiIO->queueNoteOn(seq.midiNote, 127);
+                    }else{
+                        midiIO->queueNoteOff(seq.midiNote, 0);
+                    }
+                }
+                seq.lastTrig = trig;
+            }
             midiIO->flushQueue();
         }
+
+        sequencingSampleCounter ++;
+        if (sequencingSampleCounter >= sequencingSampleDiv) {
+            sequencingSampleCounter = 0;
+        }
+
         stereosample_t ret { 0.f,0.f };
         return ret;
     }
@@ -82,7 +132,13 @@ public:
         AudioAppBase<NPARAMS>::Setup(sample_rate, interface);
         maxiSettings::sampleRate = sample_rate;
         sampleRatef = static_cast<float>(sample_rate);
+        updateBPM(90.f);
+        size_t midiNote = 36;
+        for(auto &seq: ratioSeqStates) {
+            seq.midiNote = midiNote++;
+        }
     }
+
     void setupMIDI(std::shared_ptr<MIDIInOut> new_midi_interf) {
         midiIO = new_midi_interf;
     }
@@ -95,6 +151,34 @@ public:
     {
         firstParamsReceived = true;
         // currentVoiceSpace(params);
+        size_t paramIdx = 0;
+        for(auto &v: ratioSeqStates) {
+            float sum=0.f;
+            for(size_t i=0; i < v.ratios.size(); i++) {
+                v.ratios[i] = (float)(int)(params[paramIdx++] * 7.f) + 1.f; 
+                sum += v.ratios[i];
+            }
+            v.ratioSum = sum;
+            v.phasorMul = ((float)(int)(params[paramIdx++] * 2.f) * 0.5f)+ 1.f;
+        }
+
+    }
+
+    void updateBPM(float newBPM) {
+        bpm = newBPM;
+        float beatLengthInSeconds = 60.f / bpm;
+        float barLengthInSeconds = beatLengthInSeconds * timeSigBeats;
+        float barLengthInSamples = barLengthInSeconds * (sampleRatef/ sequencingSampleDiv); 
+        float barPhasorInc = 1.f/ barLengthInSamples;
+        for(auto &v: ratioSeqStates) {
+            v.phasorInc = barPhasorInc;
+        }
+    }
+
+    void setTimeSignature(float beats, float division) {
+        timeSigBeats = beats;
+        timeSigDivision = division;
+        updateBPM(bpm); // Recalculate phasor increment with new time signature
     }
 
     
@@ -104,7 +188,15 @@ protected:
     float sampleRatef;
     bool firstParamsReceived = false;
 
-    float phasor0=0.f;
+    float bpm=90.f;
+    float timeSigBeats=4.f;
+    float timeSigDivision=4.f;
+    
+    size_t sequencingSampleDiv = 50; // How often the sequencer should update (in Hz)
+    size_t sequencingSampleCounter = 0;
+
+    std::array<ratioSeqState, NSEQUENCES> ratioSeqStates;
+    
 };
 
 #endif  // __BREAKOR_AUDIO_APP_HPP__
