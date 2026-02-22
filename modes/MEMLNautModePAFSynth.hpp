@@ -29,17 +29,6 @@ public:
     String getHelpTitle() {
         return "PAF Synth Mode";
     }
-    // size_t getNParams() {
-    //     return PAFSynthAudioApp<>::kN_Params;
-    // }
-
-    // void setVoiceSpace(size_t i) {
-    //     audioAppPAFSynth.setVoiceSpace(i);
-    // }
-
-    // std::span<String> getVoiceSpaceList() {
-    //     return voiceSpaceList;
-    // }
 
     __force_inline stereosample_t process(stereosample_t x) {
         return audioAppPAFSynth.Process(x);
