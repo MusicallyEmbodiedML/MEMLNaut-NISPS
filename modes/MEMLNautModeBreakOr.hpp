@@ -5,7 +5,7 @@
 
 #include "../src/memllib/interface/MIDIInOut.hpp"
 #include "../src/memllib/hardware/memlnaut/MEMLNaut.hpp"
-#include "AudioApps/BreakOrAudioApp.hpp"
+#include "./AudioApps/BreakOrAudioApp.hpp"
 #include "../src/memllib/examples/InterfaceRL.hpp"
 #include "../src/memllib/PicoDefs.hpp"
 #include "MEMLNautMode.hpp"
@@ -39,6 +39,7 @@ public:
     void setupAudio(float sample_rate) {
         audioAppBreakOr.Setup(sample_rate, interfacePtr);
         voiceSpaceList = audioAppBreakOr.getVoiceSpaceNames();
+        audioAppBreakOr.setupMIDI(midi_interf);
     }
 
     __force_inline void loop() {
@@ -49,8 +50,9 @@ public:
 
     void setupMIDI(std::shared_ptr<MIDIInOut> new_midi_interf) {
       midi_interf = new_midi_interf;
-      midi_interf->Setup(16);
+      midi_interf->Setup(0);
       midi_interf->SetMIDISendChannel(1);
+      midi_interf->SetMIDINoteChannel(10);
       interface.bindMIDI(midi_interf);
     }
 

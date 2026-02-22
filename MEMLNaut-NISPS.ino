@@ -106,9 +106,6 @@ void setup() {
   WRITE_VOLATILE(interface_ready, true);
   Serial.println("Bound interface to MEMLNaut.");
 
-  if (midi_interf) {
-    currentMode->setupMIDI(midi_interf);
-  }
 
   WRITE_VOLATILE(core_0_ready, true);
   while (!READ_VOLATILE(core_1_ready)) {
@@ -203,6 +200,9 @@ void setup1() {
     delay(1);
   }
 
+  if (midi_interf) {
+    currentMode->setupMIDI(midi_interf);
+  }
 
   currentMode->setupAudio(AudioDriver::GetSampleRate());
 

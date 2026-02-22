@@ -3,12 +3,14 @@
 
 #include "../../src/memllib/audio/AudioAppBase.hpp" 
 #include "../../src/memllib/synth/maximilian.h"
+#include "../../src/memllib/interface/MIDIInOut.hpp"
+
 
 #include <cstddef>
 #include <cstdint>
 #include <memory> // Added for std::shared_ptr
 
-#include "../../src/memllib/interface/InterfaceBase.hpp" // Added missing include
+#include "../../src/memllib/interface/InterfaceBase.hpp" 
 
 #include <span>
 
@@ -23,6 +25,8 @@ class BreakOrAudioApp : public AudioAppBase<NPARAMS>
 public:
     static constexpr size_t kN_Params = NPARAMS;
     static constexpr size_t nVoiceSpaces=0;
+
+    std::shared_ptr<MIDIInOut> midiIO;
 
     std::array<VoiceSpace<NPARAMS>, nVoiceSpaces> voiceSpaces;
     
@@ -63,6 +67,12 @@ public:
 
     stereosample_t __force_inline Process(const stereosample_t x) override
     {
+        phasor0 += 1.f;
+        if (phasor0>=48000.f) {
+            phasor0-=48000.f;
+            midiIO->queueNoteOn(36, 127);
+            midiIO->flushQueue();
+        }
         stereosample_t ret { 0.f,0.f };
         return ret;
     }
@@ -73,7 +83,9 @@ public:
         maxiSettings::sampleRate = sample_rate;
         sampleRatef = static_cast<float>(sample_rate);
     }
-
+    void setupMIDI(std::shared_ptr<MIDIInOut> new_midi_interf) {
+        midiIO = new_midi_interf;
+    }
 
     void loop() override {
         AudioAppBase<NPARAMS>::loop();
@@ -91,6 +103,8 @@ protected:
 
     float sampleRatef;
     bool firstParamsReceived = false;
+
+    float phasor0=0.f;
 };
 
 #endif  // __BREAKOR_AUDIO_APP_HPP__
