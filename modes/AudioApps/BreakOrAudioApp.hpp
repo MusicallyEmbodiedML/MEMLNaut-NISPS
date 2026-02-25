@@ -20,6 +20,7 @@ struct ratioSeqState {
     std::array<float, 3> ratios{1.f};
     float phasor=0.f;
     float phasorInc=0.f;
+    float phaseOffset = 0.f;
     bool lastTrig = false;
     float phasorMul = 1.f;
     float ratioSum=1.f;
@@ -30,7 +31,11 @@ struct ratioSeqState {
 template<size_t seqLength>
 inline bool __not_in_flash_func(ratioSeq)(ratioSeqState &seq) {
     bool trig     = 0;
-    float phaseAdj           = seq.ratioSum * seq.phasor;
+    float offsetPhase  = seq.phaseOffset + seq.phasor;
+    if (offsetPhase >= 1.f) {
+        offsetPhase -= 1.f;
+    }
+    float phaseAdj           = seq.ratioSum * offsetPhase;
     float accumulatedSum     = 0;
     float lastAccumulatedSum = 0;
     for (size_t v : seq.ratios)
@@ -39,7 +44,6 @@ inline bool __not_in_flash_func(ratioSeq)(ratioSeqState &seq) {
         if (phaseAdj <= accumulatedSum)
         {
             // check pulse width
-            //TODO: could precalc acc-lastacc
             float beatPhase = (phaseAdj - lastAccumulatedSum) /
                                (accumulatedSum - lastAccumulatedSum);
             trig = beatPhase <= seq.pulseWidth;
@@ -133,9 +137,10 @@ public:
         maxiSettings::sampleRate = sample_rate;
         sampleRatef = static_cast<float>(sample_rate);
         updateBPM(90.f);
-        size_t midiNote = 36;
+        const size_t midiNotes[NSEQUENCES] = {36,37,38,39,40, 42,43,45,47,48};
+        size_t midiNote = 0;
         for(auto &seq: ratioSeqStates) {
-            seq.midiNote = midiNote++;
+            seq.midiNote = midiNotes[midiNote++];
         }
     }
 
@@ -160,6 +165,7 @@ public:
             }
             v.ratioSum = sum;
             v.phasorMul = ((float)(int)(params[paramIdx++] * 2.f) * 0.5f)+ 1.f;
+            v.phaseOffset = ((int)(params[paramIdx++] * timeSigBeats)) * timeSigBeatsInv;
         }
 
     }
@@ -190,9 +196,10 @@ protected:
 
     float bpm=90.f;
     float timeSigBeats=4.f;
+    float timeSigBeatsInv=1.f/timeSigBeats;
     float timeSigDivision=4.f;
     
-    size_t sequencingSampleDiv = 50; // How often the sequencer should update (in Hz)
+    size_t sequencingSampleDiv = 50; 
     size_t sequencingSampleCounter = 0;
 
     std::array<ratioSeqState, NSEQUENCES> ratioSeqStates;
