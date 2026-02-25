@@ -164,9 +164,11 @@ public:
                 sum += v.ratios[i];
             }
             v.ratioSum = sum;
-            v.phasorMul = ((float)(int)(params[paramIdx++] * 2.f) * 0.5f)+ 1.f;
+            static float muls[7] = {0.25f, 0.33f, 0.5f, 1.f, 1.5f, 2.f, 3.f};
+            v.phasorMul = muls[(int)(params[paramIdx++] * 6.999999f)];
             v.phaseOffset = ((int)(params[paramIdx++] * timeSigBeats)) * timeSigBeatsInv;
         }
+        // Serial.printf("pm: %f", ratioSeqStates[0].phasorMul);
 
     }
 
