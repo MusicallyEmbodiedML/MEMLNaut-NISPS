@@ -22,10 +22,36 @@ public:
     InterfaceRL interface;
     std::shared_ptr<InterfaceRL> interfacePtr;
 
+    bool sequencerPlaying = false;
+
     void setupInterface() {
         interface.setup(kN_InputParams, BreakOrAudioApp<>::kN_Params);
         interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true);
         interfacePtr = make_non_owning(interface);    
+
+        MEMLNaut::Instance()->setTogA2Callback([this](bool state) { // scr_ref no longer captured directly
+            Serial.println(state ? "TogA2 ON" : "TogA2 OFF");
+            if (state) {
+                sequencerPlaying = !sequencerPlaying;
+                queue_try_add(&audioAppBreakOr.sequencerControlQueue, &sequencerPlaying);
+            }
+ 
+            // //tiggle up
+            // if (state) {
+            //     //store output
+            //     savedAction = action;
+            //     actionBeingDragged=true;
+            //     msgView->post("Where do you want it?");
+            // }else{
+            //     //button up
+            //     if (actionBeingDragged) {
+            //         this->storeExperience(1.f, controlInput, savedAction);
+            //         actionBeingDragged=false;
+            //         msgView->post("Here!");
+            //     }
+            // }
+        });
+
     }
 
     String getHelpTitle() {
@@ -40,6 +66,11 @@ public:
         audioAppBreakOr.Setup(sample_rate, interfacePtr);
         voiceSpaceList = audioAppBreakOr.getVoiceSpaceNames();
         audioAppBreakOr.setupMIDI(midi_interf);
+        MEMLNaut::Instance()->setRVGain1Callback([this](float value) {
+            // Serial.printf("Volume control: %f\n", value);
+            queue_try_add(&audioAppBreakOr.bpmQueue, &value);
+        }, 0); // Set threshold to 0 to trigger on any change
+
     }
 
     __force_inline void loop() {
