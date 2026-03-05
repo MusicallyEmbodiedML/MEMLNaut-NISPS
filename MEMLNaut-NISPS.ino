@@ -164,6 +164,8 @@ void loop() {
       digitalWrite(33, LOW);
     },
     100000)
+
+  currentMode->loopCore0();
 }
 
 
@@ -231,5 +233,5 @@ void loop1() {
 
   PERIODIC_RUN_US(
     midi_interf->Poll();
-    , 10000)
+    , 1000)
 }

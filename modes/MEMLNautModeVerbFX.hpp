@@ -15,7 +15,7 @@
 
 class MEMLNautModeVerbFX {
 public:
-    constexpr static size_t kN_InputParams = XiasriAnalysis::kN_Params;  //ML
+    constexpr static size_t kN_InputParams = XiasriAnalysis::kN_Params +4;  //ML + joystick
     InterfaceRL interface;
     std::shared_ptr<InterfaceRL> interfacePtr;
     XiasriAnalysis mlAnalysis{kSampleRate};
@@ -26,7 +26,7 @@ public:
 
     void setupInterface() {
         interface.setup(kN_InputParams, VerbFXAudioApp<>::kN_Params);
-        interface.bindInterface(InterfaceRL::INPUT_MODES::MACHINE_LISTENING);
+        interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK_AND_MACHINE_LISTENING);
         interfacePtr = make_non_owning(interface);
     }
 
@@ -79,5 +79,7 @@ public:
         //     , 100);
 
     }
+    
+    void loopCore0() {}
 
 };

@@ -115,4 +115,6 @@ public:
 
     void analyse(stereosample_t) {}
 
+    void loopCore0() {}
+
 };

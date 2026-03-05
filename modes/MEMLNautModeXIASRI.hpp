@@ -80,4 +80,6 @@ public:
 
     }
 
+    void loopCore0() {}
+
 };

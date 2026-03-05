@@ -11,11 +11,14 @@
 #include "MEMLNautMode.hpp"
 #include <memory>
 #include <array>
+#include "../src/memllib/interface/USeqI2C.hpp"
+
 
 class MEMLNautModeBreakOr {
 public:
     constexpr static size_t kN_InputParams = 4; // joystick x, y, rotate
 
+    USeqI2C i2cOut;
     inline static BreakOrAudioApp<> audioAppBreakOr;
     std::array<String, BreakOrAudioApp<>::nVoiceSpaces> voiceSpaceList;
 
@@ -23,6 +26,8 @@ public:
     std::shared_ptr<InterfaceRL> interfacePtr;
 
     bool sequencerPlaying = false;
+
+
 
     void setupInterface() {
         interface.setup(kN_InputParams, BreakOrAudioApp<>::kN_Params);
@@ -36,22 +41,9 @@ public:
                 queue_try_add(&audioAppBreakOr.sequencerControlQueue, &sequencerPlaying);
             }
  
-            // //tiggle up
-            // if (state) {
-            //     //store output
-            //     savedAction = action;
-            //     actionBeingDragged=true;
-            //     msgView->post("Where do you want it?");
-            // }else{
-            //     //button up
-            //     if (actionBeingDragged) {
-            //         this->storeExperience(1.f, controlInput, savedAction);
-            //         actionBeingDragged=false;
-            //         msgView->post("Here!");
-            //     }
-            // }
         });
 
+        i2cOut.begin();
     }
 
     String getHelpTitle() {
@@ -104,6 +96,17 @@ public:
     inline void processAnalysisParams() {}
 
     void analyse(stereosample_t) {}
+
+    float i2cValues[8];
+    void loopCore0() {
+        PERIODIC_RUN_US(
+            if (queue_try_remove(&audioAppBreakOr.i2cOutQueue, &i2cValues)) {
+                // Serial.printf("i2c received: %f %f %f %f %f %f %f %f\n", i2cValues[0], i2cValues[1], i2cValues[2], i2cValues[3], i2cValues[4], i2cValues[5], i2cValues[6], i2cValues[7]);
+                bool i2cSuccess = i2cOut.sendValues(i2cValues, 8);
+            }
+            , 5000)
+
+    }
 
 };
 

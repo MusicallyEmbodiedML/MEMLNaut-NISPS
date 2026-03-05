@@ -85,4 +85,6 @@ public:
 
     }
 
+    void loopCore0() {}
+
 };

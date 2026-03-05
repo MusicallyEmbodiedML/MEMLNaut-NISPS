@@ -12,6 +12,7 @@
 
 #include "../../src/memllib/interface/InterfaceBase.hpp" 
 
+
 #include <span>
 
 #include "../../voicespaces/VoiceSpaces.hpp"
@@ -59,7 +60,7 @@ inline bool __not_in_flash_func(ratioSeq)(float phasor, float phaseOffset, float
 }
 
 
-template<size_t NPARAMS=70, size_t NSEQUENCES=10>
+template<size_t NPARAMS=56, size_t NSEQUENCES=8>
 class BreakOrAudioApp : public AudioAppBase<NPARAMS>
 {
 public:
@@ -68,6 +69,8 @@ public:
 
     queue_t bpmQueue;
     queue_t sequencerControlQueue;
+    queue_t i2cOutQueue;
+
 
     bool sequencerPlaying = false;
 
@@ -95,6 +98,7 @@ public:
         // currentVoiceSpace = voiceSpaces[0].mappingFunction;  
         queue_init(&bpmQueue, sizeof(float), 1);
         queue_init(&sequencerControlQueue, sizeof(int), 1);
+        queue_init(&i2cOutQueue, sizeof(float) * 8, 1);
     };
 
     bool __force_inline euclidean(float phase, const size_t n, const size_t k, const size_t offset, const float pulseWidth)
@@ -121,14 +125,19 @@ public:
                 midiIO->flushQueue();
             }
             if (sequencingSampleCounter==0) {
+                
+                barPhasor += barPhasorInc;
+                if (barPhasor >= 1.f) {
+                    barPhasor -= 1.f;
+                }
+                int i2cIdx=0;
                 for(auto &seq: ratioSeqStates) {
                     //update phasor
-                    seq.phasor += (seq.phasorInc * seq.phasorMul);
-                    if (seq.phasor >= 1.f) {
-                        seq.phasor -= 1.f;
-                    }
-                    bool trig = ratioSeq<3>(seq.phasor, seq.phaseOffset, seq.ratioSum, seq.ratios, seq.pulseWidth);
-                    bool highAmp = ratioSeq<2>(seq.phasor, seq.phaseOffset, seq.ampRatioSum, seq.ampRatios, 0.5f);
+                    float seqPhasor = barPhasor * seq.phasorMul;
+                    seqPhasor = fmodf(seqPhasor + seq.phaseOffset, 1.f); // Wrap phasor to [0,1]
+
+                    bool trig = ratioSeq<3>(seqPhasor, seq.phaseOffset, seq.ratioSum, seq.ratios, seq.pulseWidth);
+                    bool highAmp = ratioSeq<2>(seqPhasor, seq.phaseOffset, seq.ampRatioSum, seq.ampRatios, 0.5f);
                     if (trig && !seq.lastTrig) {
                         if (trig) {
                             midiIO->queueNoteOn(seq.midiNote, highAmp ? 127 : 64);
@@ -137,8 +146,10 @@ public:
                         }
                     }
                     seq.lastTrig = trig;
+                    i2cValues[i2cIdx++] = trig;
                 }
                 midiIO->flushQueue();
+                queue_try_add(&i2cOutQueue, &i2cValues);
             }
 
             sequencingSampleCounter ++;
@@ -158,7 +169,7 @@ public:
         maxiSettings::sampleRate = sample_rate;
         sampleRatef = static_cast<float>(sample_rate);
         updateBPM(90.f);
-        const size_t midiNotes[NSEQUENCES] = {36,37,38,39,40, 42,43,45,47,48};
+        const size_t midiNotes[NSEQUENCES] = {36,37,38,39,40, 42,43,45/*,47,48*/};
         size_t midiNote = 0;
         for(auto &seq: ratioSeqStates) {
             seq.midiNote = midiNotes[midiNote++];
@@ -174,7 +185,9 @@ public:
     }
 
     void ProcessParams(const std::array<float, NPARAMS>& params)
-    {
+    {   
+        // if (sequencerPlaying) {
+        // }
         firstParamsReceived = true;
         if (queue_try_remove(&bpmQueue, &bpm)) {
             bpm = 30.f + (bpm * 200.f); // Scale BPM from [0,1] to [30,230]
@@ -198,6 +211,7 @@ public:
                 midiIO->queueClockStart();
                 midiIO->flushQueue();
             }
+            Serial.printf("Sequencer %s\n", sequencerPlaying ? "Playing" : "Stopped");
         }
         // currentVoiceSpace(params);
         size_t paramIdx = 0;
@@ -210,7 +224,7 @@ public:
             v.ratioSum = sum;
             // static float muls[7] = {0.25f, 0.33f, 0.5f, 1.f, 1.5f, 2.f, 3.f};
             // v.phasorMul = muls[(int)(params[paramIdx++] * 6.999999f)];
-            static float muls[4] = {0.5f, 1.f, 2.f, 4.f};
+            static float muls[4] = {1.f, 2.f, 4.f, 8.f};
             v.phasorMul = muls[(int)(params[paramIdx++] * 3.999999f)];
             v.phaseOffset = ((int)(params[paramIdx++] * timeSigBeats)) * timeSigBeatsInv;
 
@@ -230,10 +244,10 @@ public:
         float beatLengthInSeconds = 60.f / bpm;
         float barLengthInSeconds = beatLengthInSeconds * timeSigBeats;
         float barLengthInSamples = barLengthInSeconds * (sampleRatef/ sequencingSampleDiv); 
-        float barPhasorInc = 1.f/ barLengthInSamples;
-        for(auto &v: ratioSeqStates) {
-            v.phasorInc = barPhasorInc;
-        }
+        barPhasorInc = 1.f/ barLengthInSamples;
+        // for(auto &v: ratioSeqStates) {
+        //     v.phasorInc = barPhasorInc;
+        // }
         float midiClockLengthInSeconds = beatLengthInSeconds / 24.f;
         float midiClockLengthInSamples = midiClockLengthInSeconds * sampleRatef;
         midiClockPhasorInc = 1.f / midiClockLengthInSamples;
@@ -249,6 +263,8 @@ public:
 
 protected:
 
+    float i2cValues[8] = {0,0,0,0,0,0,0,0};
+
     float sampleRatef;
     bool firstParamsReceived = false;
 
@@ -256,8 +272,11 @@ protected:
     float timeSigBeats=4.f;
     float timeSigBeatsInv=1.f/timeSigBeats;
     float timeSigDivision=4.f;
+
+    float barPhasorInc=0.f;
+    float barPhasor;
     
-    size_t sequencingSampleDiv = 50; 
+    size_t sequencingSampleDiv = 400; 
     size_t sequencingSampleCounter = 0;
 
     std::array<ratioSeqState, NSEQUENCES> ratioSeqStates;
