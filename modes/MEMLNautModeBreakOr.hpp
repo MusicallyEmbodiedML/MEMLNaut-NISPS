@@ -25,9 +25,9 @@ public:
     InterfaceRL interface;
     std::shared_ptr<InterfaceRL> interfacePtr;
 
+    BreakOrAudioApp<>::SequencerClockModes clockMode = BreakOrAudioApp<>::MIDI_CLOCK;
+
     bool sequencerPlaying = false;
-
-
 
     void setupInterface() {
         interface.setup(kN_InputParams, BreakOrAudioApp<>::kN_Params);
@@ -55,12 +55,13 @@ public:
     }
 
     void setupAudio(float sample_rate) {
-        audioAppBreakOr.Setup(sample_rate, interfacePtr);
+        audioAppBreakOr.Setup(sample_rate, interfacePtr, clockMode);
         voiceSpaceList = audioAppBreakOr.getVoiceSpaceNames();
         audioAppBreakOr.setupMIDI(midi_interf);
         MEMLNaut::Instance()->setRVGain1Callback([this](float value) {
-            // Serial.printf("Volume control: %f\n", value);
-            queue_try_add(&audioAppBreakOr.bpmQueue, &value);
+            if (clockMode == BreakOrAudioApp<>::INTERNAL) {
+                queue_try_add(&audioAppBreakOr.bpmQueue, &value);
+            }
         }, 0); // Set threshold to 0 to trigger on any change
 
     }
@@ -76,6 +77,22 @@ public:
       midi_interf->Setup(0);
       midi_interf->SetMIDISendChannel(1);
       midi_interf->SetMIDINoteChannel(10);
+      midi_interf->SetNoteCallback([this](bool noteon, uint8_t note_number, uint8_t vel_value) {
+        Serial.printf("MIDI Note %d: %d %d\n", note_number, vel_value, noteon);
+        if (note_number==0) {
+            int resetTrigger=1;
+            queue_try_add(&audioAppBreakOr.barPhaseResetQueue, &resetTrigger); // value doesn't matter, just a trigger
+            Serial.println("Bar phase reset triggered by MIDI note 0");
+
+        }
+      });
+      midi_interf->SetBPMCallback([this](float bpm) {
+        // Serial.printf("Estimated BPM: %.2f\n", bpm);
+        if (clockMode == BreakOrAudioApp<>::MIDI_CLOCK) {
+            queue_try_add(&audioAppBreakOr.bpmQueue, &bpm);
+        }
+
+      });
       interface.bindMIDI(midi_interf);
     }
 

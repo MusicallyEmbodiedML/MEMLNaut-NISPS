@@ -70,6 +70,12 @@ public:
     queue_t bpmQueue;
     queue_t sequencerControlQueue;
     queue_t i2cOutQueue;
+    queue_t barPhaseResetQueue;
+
+    enum SequencerClockModes {
+        INTERNAL,
+        MIDI_CLOCK
+    } sequencerClockMode = INTERNAL;
 
 
     bool sequencerPlaying = false;
@@ -99,6 +105,7 @@ public:
         queue_init(&bpmQueue, sizeof(float), 1);
         queue_init(&sequencerControlQueue, sizeof(int), 1);
         queue_init(&i2cOutQueue, sizeof(float) * 8, 1);
+        queue_init(&barPhaseResetQueue, sizeof(int), 1);
     };
 
     bool __force_inline euclidean(float phase, const size_t n, const size_t k, const size_t offset, const float pulseWidth)
@@ -118,17 +125,26 @@ public:
     stereosample_t __force_inline Process(const stereosample_t x) override
     {
         if (sequencerPlaying) {
-            midiClockPhasor += midiClockPhasorInc;
-            if (midiClockPhasor >= 1.f) {
-                midiClockPhasor -= 1.f;
-                midiIO->queueClock();
-                midiIO->flushQueue();
+            if (sequencerClockMode == INTERNAL){
+                midiClockPhasor += midiClockPhasorInc;
+                if (midiClockPhasor >= 1.f) {
+                    midiClockPhasor -= 1.f;
+                    midiIO->queueClock();
+                    midiIO->flushQueue();
+                }
             }
             if (sequencingSampleCounter==0) {
                 
                 barPhasor += barPhasorInc;
                 if (barPhasor >= 1.f) {
                     barPhasor -= 1.f;
+                }
+                if (sequencerClockMode == MIDI_CLOCK) {
+                    int phasorResetValue=0;
+                    if (queue_try_remove(&barPhaseResetQueue, &phasorResetValue)) {
+                        barPhasor = 0.f;
+                        Serial.println("Bar phase reset triggered by queue");
+                    }
                 }
                 int i2cIdx=0;
                 for(auto &seq: ratioSeqStates) {
@@ -163,11 +179,12 @@ public:
         return ret;
     }
 
-    void Setup(float sample_rate, std::shared_ptr<InterfaceBase> interface) override
+    void Setup(float sample_rate, std::shared_ptr<InterfaceBase> interface, SequencerClockModes clockMode) 
     {
         AudioAppBase<NPARAMS>::Setup(sample_rate, interface);
         maxiSettings::sampleRate = sample_rate;
         sampleRatef = static_cast<float>(sample_rate);
+        sequencerClockMode = clockMode;
         updateBPM(90.f);
         const size_t midiNotes[NSEQUENCES] = {36,37,38,39,40, 42,43,45/*,47,48*/};
         size_t midiNote = 0;
@@ -190,7 +207,7 @@ public:
         // }
         firstParamsReceived = true;
         if (queue_try_remove(&bpmQueue, &bpm)) {
-            bpm = 30.f + (bpm * 200.f); // Scale BPM from [0,1] to [30,230]
+            // bpm = 30.f + (bpm * 200.f); // Scale BPM from [0,1] to [30,230]
             updateBPM(bpm);
         }
         int sequencerControl;
