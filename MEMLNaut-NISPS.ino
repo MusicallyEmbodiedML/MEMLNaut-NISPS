@@ -25,13 +25,15 @@
 #include "modes/MEMLNautModeXIASRI.hpp"
 #include "modes/MEMLNautModeBreakOr.hpp"
 #include "modes/MEMLNautModeVerbFX.hpp"
+#include "modes/MEMLNautModeElysiamorfs.hpp"
 
-//hook up the memlnaut mode 
+//hook up the memlnaut mode
 
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeSoundAnalysisMIDI
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeXIASRI
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeVerbFX
-#define MEMLNAUT_MODE_TYPE MEMLNautModeBreakOr
+// #define MEMLNAUT_MODE_TYPE MEMLNautModeBreakOr
+#define MEMLNAUT_MODE_TYPE MEMLNautModeElysiamorfs
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeChannelStrip
 // #define MEMLNAUT_MODE_TYPE MEMLNautModePAFSynth
 
