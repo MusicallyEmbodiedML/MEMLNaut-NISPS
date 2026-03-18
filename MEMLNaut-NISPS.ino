@@ -1,3 +1,8 @@
+//machine config
+
+#define JOYSTICK_IS_4D false
+#define MEMLNAUT_ANALOG_INPUTS 3 + (JOYSTICK_IS_4D ? 1 : 0)
+#define MEMLNAUT_INPUT_MODE InterfaceRL::INPUT_MODES::JOYSTICK
 
 //hardware
 #include "src/memllib/utils/perf.hpp"
@@ -31,9 +36,9 @@
 
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeSoundAnalysisMIDI
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeXIASRI
-// #define MEMLNAUT_MODE_TYPE MEMLNautModeVerbFX
+#define MEMLNAUT_MODE_TYPE MEMLNautModeVerbFX
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeBreakOr
-#define MEMLNAUT_MODE_TYPE MEMLNautModeElysiamorfs
+// #define MEMLNAUT_MODE_TYPE MEMLNautModeElysiamorfs
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeChannelStrip
 // #define MEMLNAUT_MODE_TYPE MEMLNautModePAFSynth
 

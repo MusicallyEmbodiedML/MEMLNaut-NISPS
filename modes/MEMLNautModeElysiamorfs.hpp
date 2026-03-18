@@ -25,7 +25,7 @@ public:
     InterfaceRL interface;
     std::shared_ptr<InterfaceRL> interfacePtr;
 
-    ElysiamorfAudioApp<>::SequencerClockModes clockMode = ElysiamorfAudioApp<>::MIDI_CLOCK;
+    ElysiamorfAudioApp<>::SequencerClockModes clockMode = ElysiamorfAudioApp<>::INTERNAL;
 
     bool sequencerPlaying = false;
 

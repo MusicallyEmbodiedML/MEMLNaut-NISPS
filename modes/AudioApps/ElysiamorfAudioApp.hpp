@@ -213,7 +213,7 @@ public:
         firstParamsReceived = true;
         if (queue_try_remove(&bpmQueue, &bpm)) {
             updateBPM(bpm);
-            Serial.printf("BPM updated: %f\n", bpm);
+            // Serial.printf("BPM updated: %f\n", bpm);
         }
         int sequencerControl;
         if (queue_try_remove(&sequencerControlQueue, &sequencerControl)) {
@@ -263,8 +263,8 @@ public:
             v.modFreq = (0.25f + params[paramIdx++] * 0.75f) * 0.25f; // 1 to 10
             v.modIndex = params[paramIdx++] * 4.f; // 0 to 10
             v.fbLevel = 0.f;//params[paramIdx++] ; // 0 to 1
-            static float muls[4] = {1.f};
-            v.phasorMul = 1.f;//muls[(int)(params[paramIdx++])];
+            static float muls[4] = {1.f,2.f, 3.f,4.f};
+            v.phasorMul = muls[(int)(params[paramIdx++]* 3.999f) ];
             v.phaseOffset = ((int)(params[paramIdx++] * timeSigBeats)) * timeSigBeatsInv;
         }
         // Serial.printf("pm: %f", ratioSeqStates[0].phasorMul);

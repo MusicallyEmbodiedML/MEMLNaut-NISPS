@@ -52,72 +52,65 @@ public:
     __attribute__((hot)) stereosample_t __force_inline Process(const stereosample_t x) override
     {
         float mix = x.L + x.R;
-        mix *= 2.0f;
 
         smoother.Process(neuralNetOutputs.data(), smoothParams.data());
 
-        float dl1mix = smoothParams[0] * 0.4f;
-        float dl2mix = smoothParams[1] * 0.4f;
-        float dl3mix = smoothParams[2] * 0.8f;
-        float dl4mix = smoothParams[22] * smoothParams[22] * 0.41f;
         
-        float allp1fb = smoothParams[4] * 0.99f;
-        float allp2fb = smoothParams[5] * 0.99f;
-        float comb1fb = (smoothParams[6] * 0.95f);
-        float comb2fb = (smoothParams[7] * 0.95f);
+        // float allp1fb = smoothParams[4] * 0.99f;
+        // float allp2fb = smoothParams[5] * 0.99f;
+        // float allp3fb = smoothParams[14] * 0.99f;
 
-        float dl1fb = (smoothParams[8] * 0.95f);
-        float dl2fb = (smoothParams[9] * 0.95f);
-        float dl3fb = (smoothParams[10] * 0.95f);
-        float dl4fb = (smoothParams[23] * 0.95f);
-        // Wet-dry mix between 0.2 and 1
-        wetdry_mix_ = (smoothParams[11] * 0.7f) + 0.3f;
-        // Pitch shift transposition between -12 and +12 semitones
-        // float pitchshift_transpose = (smoothParams[12] * 24.f) - 12.f; // Scale to -12 to +12 semitones
-        pitchshifter_.SetTransposition(12.f + smoothParams[12]);
-        //pitchshifter_.SetTransposition(-5.f);
-        // Set pitch shifter mix
-        pitchshifter_mix_ = smoothParams[13] * 0.99f;
+        wetdry_mix_ = (smoothParams[0] * 0.9f) + 0.1f;
+        const float lp0fb = smoothParams[1] * 0.98f;
+        const float lp0cutoff = (smoothParams[2] * 0.5f) + 0.05f;
 
-        float allp3fb = smoothParams[14] * 0.99f;
-        float allp4fb = smoothParams[15] * 0.99f;
-        float allp5fb = smoothParams[16] * 0.99f;
-        float allp6fb = smoothParams[17] * 0.99f;
-        float allp3fbmix = smoothParams[18];
-        float allp4fbmix = smoothParams[19];
-        float allp5fbmix = smoothParams[20];
-        float allp6fbmix = smoothParams[21];
+        const float lp1fb = smoothParams[3] * 0.98f;
+        const float lp1cutoff = (smoothParams[4] * 0.5f) + 0.05f;
 
-        // // PROCESS
-        float pitchshifted = pitchshifter_.Process(mix);
-        // // Mix the original signal with the pitch-shifted signal
-        pitchshifted = (mix * (1.f - pitchshifter_mix_)) + (pitchshifted * pitchshifter_mix_);
+        const float lp2fb = smoothParams[5] * 0.98f;
+        const float lp2cutoff = (smoothParams[6] * 0.5f) + 0.05f;
 
-        float y = dcb.play(pitchshifted, 0.99f) * 2.f;
-        // float y = dcb.play(pitchshifted, 0.99f) * 3.f;
-        float y1 = allp1.allpass(y, 30, allp1fb);
-        y1 = comb1.combfb(y1, 127, comb1fb);
+        const float lp3fb = smoothParams[7] * 0.98f;
+        const float lp3cutoff = (smoothParams[8] * 0.5f) + 0.05f;
 
-        float y2 = allp2.allpass(y, 482, allp2fb);
-        y2 = comb2.combfb(y2, 808, comb2fb);
+        const float lp4fb = smoothParams[9] * 0.98f;
+        const float lp4cutoff = (smoothParams[10] * 0.5f) + 0.05f;
 
-        float y3 = allp3.allpass(y, 19, allp3fb) * allp3fbmix;
-        float y4 = allp4.allpass(y, 69, allp4fb) * allp4fbmix;
-        float y5 = allp5.allpass(y, 131, allp5fb) * allp5fbmix;
-        float y6 = allp6.allpass(y, 287, allp6fb) * allp6fbmix;
-        y = y1 + y2 + y3 + y4 +y5 +y6;
-        float d1 = (dl1.play(y, 3500, dl1fb) * dl1mix);
-        float d2 = (dl2.play(y, 7886, dl2fb) * dl2mix);
-        float d3 = (dl3.play(y, 299, dl3fb) * dl3mix);
-        float d4 = (dl4.play(y, 15873, dl4fb) * dl4mix);
+        const float lp5fb = smoothParams[11] * 0.98f;
+        const float lp5cutoff = (smoothParams[12] * 0.5f) + 0.05f;
+
+        const float lp6fb = smoothParams[13] * 0.98f;
+        const float lp6cutoff = (smoothParams[14] * 0.5f) + 0.05f;
+
+        const float lp7fb = smoothParams[15] * 0.98f;
+        const float lp7cutoff = (smoothParams[16] * 0.5f) + 0.05f;
+
+        float lp0 = lpcomb0.lpcombfb(mix, SIZE_comb0, lp0fb, lp0cutoff);
+        float lp1 = lpcomb1.lpcombfb(mix, SIZE_comb1, lp1fb, lp1cutoff);
+        float lp2 = lpcomb2.lpcombfb(mix, SIZE_comb2, lp2fb, lp2cutoff);
+        float lp3 = lpcomb3.lpcombfb(mix, SIZE_comb3, lp3fb, lp3cutoff);
+        float lp4 = lpcomb4.lpcombfb(mix, SIZE_comb4, lp4fb, lp4cutoff);
+        float lp5 = lpcomb5.lpcombfb(mix, SIZE_comb5, lp5fb, lp5cutoff);
+        float lp6 = lpcomb6.lpcombfb(mix, SIZE_comb6, lp6fb, lp6cutoff);
+        float lp7 = lpcomb7.lpcombfb(mix, SIZE_comb7, lp7fb, lp7cutoff);
+
+        float y = lp0 + lp1 + lp2 + lp3 + lp4 + lp5 + lp6 + lp7;
 
 
-        y = y + d1 + d2 + d3;
+        const float allp0fb = smoothParams[17] * 0.98f;
+        const float allp1fb = smoothParams[18] * 0.98f;
+        const float allp2fb = smoothParams[19] * 0.98f;
+        const float allp3fb = smoothParams[20] * 0.98f;
+
+        y = allp0.allpass(y, SIZE_allp0, allp0fb);
+        y = allp1.allpass(y, SIZE_allp1, allp1fb);
+        y = allp2.allpass(y, SIZE_allp2, allp2fb);
+        y = allp3.allpass(y, SIZE_allp3, allp3fb);
+
 
         // Mix dry
         y = (y * wetdry_mix_) + (mix * (1.f - wetdry_mix_));
 
-        y = tanhf(y*1.2f);
 
         stereosample_t ret { y, y };
         return ret;
@@ -127,7 +120,6 @@ public:
     {
         AudioAppBase<NPARAMS>::Setup(sample_rate, interface);
         maxiSettings::sampleRate = sample_rate;
-        pitchshifter_.Init(sample_rate);
     }
 
     __attribute__((always_inline)) void ProcessParams(const std::array<float, NPARAMS>& params)
@@ -141,25 +133,37 @@ protected:
 
     std::array<float,NPARAMS> neuralNetOutputs{0}, smoothParams{0};
 
+    // https://ccrma.stanford.edu/~jos/pasp/Freeverb.html
+    static constexpr size_t SIZE_allp0=244;
+    static constexpr size_t SIZE_allp1=605;
+    static constexpr size_t SIZE_allp2=479;
+    static constexpr size_t SIZE_allp3=371;
 
-    maxiDelayline<5000> dl1;
-    maxiDelayline<8000> dl2;
-    maxiDelayline<1201> dl3;
-    maxiDelayline<16000> dl4;
+    maxiReverbFilters<SIZE_allp0> allp0;
+    maxiReverbFilters<SIZE_allp1> allp1;
+    maxiReverbFilters<SIZE_allp2> allp2;
+    maxiReverbFilters<SIZE_allp3> allp3;
 
-    maxiReverbFilters<300> allp1;
-    maxiReverbFilters<500> allp2;
-    maxiReverbFilters<500> allp3;
-    maxiReverbFilters<500> allp4;
-    maxiReverbFilters<500> allp5;
-    maxiReverbFilters<500> allp6;
-    maxiReverbFilters<200> comb1;
-    maxiReverbFilters<900> comb2;
+    static constexpr size_t SIZE_comb0=1694;
+    static constexpr size_t SIZE_comb1=1759;
+    static constexpr size_t SIZE_comb2=1622;
+    static constexpr size_t SIZE_comb3=1547;
+    static constexpr size_t SIZE_comb4=1379;
+    static constexpr size_t SIZE_comb5=1464;
+    static constexpr size_t SIZE_comb6=1283;
+    static constexpr size_t SIZE_comb7=1205;
+
+    maxiReverbFilters<SIZE_comb0> lpcomb0;
+    maxiReverbFilters<SIZE_comb1> lpcomb1;
+    maxiReverbFilters<SIZE_comb2> lpcomb2;
+    maxiReverbFilters<SIZE_comb3> lpcomb3;
+    maxiReverbFilters<SIZE_comb4> lpcomb4;
+    maxiReverbFilters<SIZE_comb5> lpcomb5;
+    maxiReverbFilters<SIZE_comb6> lpcomb6;
+    maxiReverbFilters<SIZE_comb7> lpcomb7;
 
     maxiDCBlocker dcb;
 
-    daisysp::PitchShifter pitchshifter_;
-    float pitchshifter_mix_{0.5f};
     float wetdry_mix_{0.5f};
 
     OnePoleSmoother<kN_Params> smoother{150.f, kSampleRate};
