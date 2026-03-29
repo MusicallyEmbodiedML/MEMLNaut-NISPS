@@ -36,11 +36,11 @@
 
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeSoundAnalysisMIDI
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeXIASRI
-#define MEMLNAUT_MODE_TYPE MEMLNautModeVerbFX
+// #define MEMLNAUT_MODE_TYPE MEMLNautModeVerbFX
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeBreakOr
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeElysiamorfs
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeChannelStrip
-// #define MEMLNAUT_MODE_TYPE MEMLNautModePAFSynth
+#define MEMLNAUT_MODE_TYPE MEMLNautModePAFSynth
 
 MEMLNAUT_MODE_TYPE AUDIO_MEM MEMLNautModeHub;
 
