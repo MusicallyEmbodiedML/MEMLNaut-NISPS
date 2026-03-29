@@ -32,7 +32,8 @@ public:
     void setupInterface() {
         interface.setup(kN_InputParams, BreakOrAudioApp<>::kN_Params);
         interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true);
-        interfacePtr = make_non_owning(interface);    
+        interface.setModeInfo("breakor", "BreakOr");
+        interfacePtr = make_non_owning(interface);
 
         MEMLNaut::Instance()->setTogA2Callback([this](bool state) { // scr_ref no longer captured directly
             Serial.println(state ? "TogA2 ON" : "TogA2 OFF");

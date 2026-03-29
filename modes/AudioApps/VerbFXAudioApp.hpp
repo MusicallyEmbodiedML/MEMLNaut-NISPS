@@ -11,6 +11,7 @@
 
 #include <span>
 #include "../../voicespaces/VoiceSpaces.hpp"
+#include "../../voicespaces/VerbFX/basic.hpp"
 #include "../../src/memllib/synth/OnePoleSmoother.hpp"
 #include "../../src/memllib/synth/maximilian.h"
 #include "../../src/daisysp/Effects/pitchshifter.h"
@@ -19,7 +20,7 @@
 
 
 
-template<size_t NPARAMS=41> 
+template<size_t NPARAMS=46> 
 class VerbFXAudioApp : public AudioAppBase<NPARAMS>
 {
 public:
@@ -30,6 +31,25 @@ public:
     std::array<VoiceSpace<NPARAMS>, nVoiceSpaces> voiceSpaces;
     
     VoiceSpaceFn<NPARAMS> currentVoiceSpace;
+
+    enum class controlMessages {
+        MSG_ENABLE_FILTERBANK=0,
+        MSG_ENABLE_REVERB,
+        MSG_ENABLE_SHORT_DELAY,
+        MSG_ENABLE_MEDIUM_DELAY,
+        MSG_ENABLE_LONG_DELAY,
+        MSG_ENABLE_DELAY_TO_REVERB,
+    };
+
+    queue_t controlMessageQueue;
+
+    bool enableFilterbank=true;
+    bool enableReverb=true;
+    bool enableShortDelay=true;
+    bool enableMediumDelay=true;
+    bool enableLongDelay=true;
+    bool enableDelayToReverb=true;
+
 
     std::array<String, nVoiceSpaces> getVoiceSpaceNames() {
         std::array<String, nVoiceSpaces> names;
@@ -46,89 +66,131 @@ public:
     }
 
     VerbFXAudioApp() : AudioAppBase<NPARAMS>() {
+        auto voiceSpaceDefault = [this](const std::array<float, NPARAMS>& params) {
+            VOICE_SPACE_VERBFX_DEFAULT_BODY
+        };
+        voiceSpaces[0] = {"Default", voiceSpaceDefault};
+        currentVoiceSpace = voiceSpaces[0].mappingFunction;
+        queue_init(&controlMessageQueue, sizeof(controlMessages), 1);
     };
 
 
     __attribute__((hot)) stereosample_t __force_inline Process(const stereosample_t x) override
     {
+        static float verbFB = 0.f;
+        static float delaysFB = 0.f;
+
         float mix = x.L + x.R;
 
         smoother.Process(neuralNetOutputs.data(), smoothParams.data());
 
+        //mapping
         wetdry_mix_ = (smoothParams[0] * 0.9f) + 0.1f;
-        const float lp0fb = smoothParams[1] * 0.98f;
-        const float lp0cutoff = (smoothParams[2] * 0.5f) + 0.05f;
+        
+        lp0fb = smoothParams[1] * 0.9f;
+        lp0cutoff = (smoothParams[2] * 0.5f) + 0.05f;
 
-        const float lp1fb = smoothParams[3] * 0.98f;
-        const float lp1cutoff = (smoothParams[4] * 0.5f) + 0.05f;
+        lp1fb = smoothParams[3] * 0.9f;
+        lp1cutoff = (smoothParams[4] * 0.5f) + 0.05f;
 
-        const float lp2fb = smoothParams[5] * 0.98f;
-        const float lp2cutoff = (smoothParams[6] * 0.5f) + 0.05f;
+        lp2fb = smoothParams[5] * 0.9f;
+        lp2cutoff = (smoothParams[6] * 0.5f) + 0.05f;
 
-        const float lp3fb = smoothParams[7] * 0.98f;
-        const float lp3cutoff = (smoothParams[8] * 0.5f) + 0.05f;
+        lp3fb = smoothParams[7] * 0.9f;
+        lp3cutoff = (smoothParams[8] * 0.5f) + 0.05f;
 
-        const float lp4fb = smoothParams[9] * 0.98f;
-        const float lp4cutoff = (smoothParams[10] * 0.5f) + 0.05f;
+        lp4fb = smoothParams[9] * 0.9f;
+        lp4cutoff = (smoothParams[10] * 0.5f) + 0.05f;
 
-        const float lp5fb = smoothParams[11] * 0.98f;
-        const float lp5cutoff = (smoothParams[12] * 0.5f) + 0.05f;
+        lp5fb = smoothParams[11] * 0.98f;
+        lp5cutoff = (smoothParams[12] * 0.5f) + 0.05f;
 
-        const float lp6fb = smoothParams[13] * 0.98f;
-        const float lp6cutoff = (smoothParams[14] * 0.5f) + 0.05f;
+        lp6fb = smoothParams[13] * 0.9;
+        lp6cutoff = (smoothParams[14] * 0.5f) + 0.05f;
 
-        const float lp7fb = smoothParams[15] * 0.98f;
-        const float lp7cutoff = (smoothParams[16] * 0.5f) + 0.05f;
+        lp7fb = smoothParams[15] * 0.9f;
+        lp7cutoff = (smoothParams[16] * 0.5f) + 0.05f;
 
-        const float allp0fb = smoothParams[17] * 0.98f;
-        const float allp1fb = smoothParams[18] * 0.98f;
-        const float allp2fb = smoothParams[19] * 0.98f;
-        const float allp3fb = smoothParams[20] * 0.98f;
+        allp0fb = smoothParams[17] * 0.9f;
+        allp1fb = smoothParams[18] * 0.9f;
+        allp2fb = smoothParams[19] * 0.9f;
+        allp3fb = smoothParams[20] * 0.9f;
 
-        const float filterBankF0 = 40.f + (smoothParams[21] * 40.f);
-        const float filterBankF1 = 80.f + (smoothParams[22] * 80.f);
-        const float filterBankF2 = 160.f + (smoothParams[23] * 160.f);
-        const float filterBankF3 = 320.f + (smoothParams[24] * 320.f);
-        const float filterBankF4 = 640.f + (smoothParams[25] * 640.f);
-        const float filterBankF5 = 1280.f + (smoothParams[26] * 1280.f);
-        const float filterBankF6 = 2560.f + (smoothParams[27] * 2560.f);
-        const float filterBankF7 = 5120.f + (smoothParams[28] * 5120.f);
+        filterBankF0 = 40.f + (smoothParams[21] * 40.f);
+        filterBankF1 = 80.f + (smoothParams[22] * 80.f);
+        filterBankF2 = 160.f + (smoothParams[23] * 160.f);
+        filterBankF3 = 320.f + (smoothParams[24] * 320.f);
+        filterBankF4 = 640.f + (smoothParams[25] * 640.f);
+        filterBankF5 = 1280.f + (smoothParams[26] * 1280.f);
+        filterBankF6 = 2560.f + (smoothParams[27] * 2560.f);
+        filterBankF7 = 5120.f + (smoothParams[28] * 5120.f);
 
+        filterBankRes0 = 1.f + (smoothParams[29] * 19.f);
+        filterBankRes1 = 1.f + (smoothParams[30] * 19.f);
+        filterBankRes2 = 1.f + (smoothParams[31] * 19.f);
+        filterBankRes3 = 1.f + (smoothParams[32] * 19.f);
+        filterBankRes4 = 1.f + (smoothParams[33] * 19.f);
+        filterBankRes5 = 1.f + (smoothParams[34] * 19.f);
+        filterBankRes6 = 1.f + (smoothParams[35] * 19.f);
+        filterBankRes7 = 1.f + (smoothParams[36] * 19.f);
 
-        const float filterBankRes0 = 1.f + (smoothParams[29] * 18.f);
-        const float filterBankRes1 = 1.f + (smoothParams[30] * 18.f);
-        const float filterBankRes2 = 1.f + (smoothParams[31] * 18.f);
-        const float filterBankRes3 = 1.f + (smoothParams[32] * 18.f);
-        const float filterBankRes4 = 1.f + (smoothParams[33] * 18.f);
-        const float filterBankRes5 = 1.f + (smoothParams[34] * 18.f);
-        const float filterBankRes6 = 1.f + (smoothParams[35] * 18.f);
-        const float filterBankRes7 = 1.f + (smoothParams[36] * 18.f);
+        ddelayTime = 10.f + (smoothParams[37] * 16373.f);
+        ddelayFeedback = (smoothParams[38] * 0.98f);
 
+        ddelayTime1 = 10.f + (smoothParams[39] * 2037.f);
+        ddelayFeedback1 = (smoothParams[40] * 0.98f);
 
-        const float ddelayTime = 10.f + (smoothParams[37] * 8181.f);
-        const float ddelayFeedback = (smoothParams[38] * 0.98f);
+        ddelayTime2 = 10.f + (smoothParams[41] * 501.f);
+        ddelayFeedback2 = (smoothParams[42] * 0.98f);
 
-        const float filterBankLFOFreq = (smoothParams[39] * 0.5f);
-        const float filterBankLFODepth = (smoothParams[40] * 0.3f);
+        verbVsDelayLevel = smoothParams[43];
+        delayToVerbLevel = smoothParams[44] * 0.99f;
+        filterBankDelayXFade = smoothParams[45];
 
-        float filterBankIn = mix;
-        float filterBankOut=0;
+        //XFADE
 
-        const float filterBankFreqMod = 1.f + lfo1.sinebuf4(filterBankLFOFreq) * filterBankLFODepth;
+        const float filterBankDelayFBLevel = sqrtf(filterBankDelayXFade);
+        const float filterBankDelayFBLevelInv = sqrtf(1.f - filterBankDelayXFade);
 
-        filterBankOut = filterBank0.bandpassChamberlain(filterBankIn,  filterBankF0 * filterBankFreqMod, filterBankRes0);
-        filterBankOut += filterBank1.bandpassChamberlain(filterBankIn, filterBankF1 * filterBankFreqMod, filterBankRes1);
-        filterBankOut += filterBank2.bandpassChamberlain(filterBankIn, filterBankF2 * filterBankFreqMod, filterBankRes2);
-        filterBankOut += filterBank3.bandpassChamberlain(filterBankIn, filterBankF3 * filterBankFreqMod, filterBankRes3);
-        filterBankOut += filterBank4.bandpassChamberlain(filterBankIn, filterBankF4 * filterBankFreqMod, filterBankRes4);
-        filterBankOut += filterBank5.bandpassChamberlain(filterBankIn, filterBankF5 * filterBankFreqMod, filterBankRes5);
-        filterBankOut += filterBank6.bandpassChamberlain(filterBankIn, filterBankF6 * filterBankFreqMod, filterBankRes6);
-        filterBankOut += filterBank7.bandpassChamberlain(filterBankIn, filterBankF7 * filterBankFreqMod, filterBankRes7);
+        /////////////////// FILTERBANK
 
-        filterBankOut *= 0.5f;
+        float filterBankIn = mix + (filterBankDelayFBLevel * ddelayFeedback); 
+        float filterBankOut=mix;
 
-        float verbIn = filterBankOut;
+        if (enableFilterbank) {
+            filterBankOut = filterBank0.bandpassChamberlain(filterBankIn,  filterBankF0, filterBankRes0);
+            filterBankOut += filterBank1.bandpassChamberlain(filterBankIn, filterBankF1, filterBankRes1);
+            filterBankOut += filterBank2.bandpassChamberlain(filterBankIn, filterBankF2, filterBankRes2);
+            filterBankOut += filterBank3.bandpassChamberlain(filterBankIn, filterBankF3, filterBankRes3);
+            filterBankOut += filterBank4.bandpassChamberlain(filterBankIn, filterBankF4, filterBankRes4);
+            filterBankOut += filterBank5.bandpassChamberlain(filterBankIn, filterBankF5, filterBankRes5);
+            filterBankOut += filterBank6.bandpassChamberlain(filterBankIn, filterBankF6, filterBankRes6);
+            filterBankOut += filterBank7.bandpassChamberlain(filterBankIn, filterBankF7, filterBankRes7);
+
+            filterBankOut *= 0.5f;
+        }
+
+        ////////////// DELAYS
+        float delayIn = filterBankOut;
+
+        float delayed = enableLongDelay ? ddelay.read(ddelayTime) : 0.f;
+        ddelay.write((delayIn * filterBankDelayFBLevelInv) + ((ddelayFeedback + (delayIn * filterBankDelayFBLevel)) * delayed));
+
+        float delayed1 = enableMediumDelay ? ddelay1.read(ddelayTime1) : 0.f;
+        ddelay1.write(delayIn + (ddelayFeedback1 * delayed1));
+
+        float delayed2 = enableShortDelay ? ddelay2.read(ddelayTime2) : 0.f;
+        ddelay2.write(delayIn + (ddelayFeedback2 * delayed2));
+
+        float delaySum = delayed + delayed1 + delayed2;
+
+        //////////////// VERB
+        float verbIn = enableReverb ? filterBankOut : 0.f;
+        if (enableDelayToReverb && enableReverb) {
+            verbIn += (delayToVerbLevel * delaySum);
+        }
         float verbOut=0.f;
+
 
         verbOut = lpcomb0.lpcombfb(filterBankOut, SIZE_comb0, lp0fb, lp0cutoff);
         verbOut += lpcomb1.lpcombfb(filterBankOut, SIZE_comb1, lp1fb, lp1cutoff);
@@ -147,11 +209,11 @@ public:
         verbOut = allp2.allpass(verbOut, SIZE_allp2, allp2fb);
         verbOut = allp3.allpass(verbOut, SIZE_allp3, allp3fb);
 
-        
-        float delayed = ddelay.read(ddelayTime);
-        ddelay.write(filterBankOut + (ddelayFeedback * delayed));
+        float y= (sqrtf(verbVsDelayLevel) * delaySum) + (sqrtf(1.f - verbVsDelayLevel) * verbOut);
 
-        float y= delayed + verbOut;
+        //feedback 
+        delaysFB = delaySum;
+        verbFB = verbOut;
 
 
 
@@ -172,8 +234,30 @@ public:
 
     __attribute__((always_inline)) void ProcessParams(const std::array<float, NPARAMS>& params)
     {
-        // currentVoiceSpace(params);
-        neuralNetOutputs = params;
+        controlMessages msg;
+        while (queue_try_remove(&controlMessageQueue, &msg)) {
+            switch(msg) {
+                case controlMessages::MSG_ENABLE_FILTERBANK:
+                    enableFilterbank = !enableFilterbank;
+                    break;
+                case controlMessages::MSG_ENABLE_REVERB:
+                    enableReverb = !enableReverb;
+                    break;
+                case controlMessages::MSG_ENABLE_SHORT_DELAY:
+                    enableShortDelay = !enableShortDelay;
+                    break;
+                case controlMessages::MSG_ENABLE_MEDIUM_DELAY:
+                    enableMediumDelay = !enableMediumDelay;
+                    break;
+                case controlMessages::MSG_ENABLE_LONG_DELAY:
+                    enableLongDelay = !enableLongDelay;
+                    break;
+                case controlMessages::MSG_ENABLE_DELAY_TO_REVERB:
+                    enableDelayToReverb = !enableDelayToReverb;
+                    break;
+            }
+        }
+        currentVoiceSpace(params);
     }
     
 
@@ -219,15 +303,37 @@ protected:
     maxiFilter filterBank6;
     maxiFilter filterBank7;
 
-    DynamicDelay<8192> ddelay;
+    DynamicDelay<16384> ddelay;
+    DynamicDelay<2048> ddelay1;
+    DynamicDelay<512> ddelay2;
 
     maxiDCBlocker dcb;
 
     float wetdry_mix_{0.5f};
 
-    OnePoleSmoother<kN_Params> smoother{150.f, kSampleRate};
+    // mapping
+    float lp0fb{0}, lp0cutoff{0};
+    float lp1fb{0}, lp1cutoff{0};
+    float lp2fb{0}, lp2cutoff{0};
+    float lp3fb{0}, lp3cutoff{0};
+    float lp4fb{0}, lp4cutoff{0};
+    float lp5fb{0}, lp5cutoff{0};
+    float lp6fb{0}, lp6cutoff{0};
+    float lp7fb{0}, lp7cutoff{0};
+    float allp0fb{0}, allp1fb{0}, allp2fb{0}, allp3fb{0};
+    float filterBankF0{0}, filterBankF1{0}, filterBankF2{0}, filterBankF3{0};
+    float filterBankF4{0}, filterBankF5{0}, filterBankF6{0}, filterBankF7{0};
+    float filterBankRes0{0}, filterBankRes1{0}, filterBankRes2{0}, filterBankRes3{0};
+    float filterBankRes4{0}, filterBankRes5{0}, filterBankRes6{0}, filterBankRes7{0};
+    float ddelayTime{0}, ddelayFeedback{0};
+    float ddelayTime1{0}, ddelayFeedback1{0};
+    float ddelayTime2{0}, ddelayFeedback2{0};
+    float verbVsDelayLevel{0}, delayToVerbLevel{0}, filterBankDelayXFade{0};
 
-    maxiOsc lfo1;
+    OnePoleSmoother<kN_Params> smoother{150.f, kSampleRate};
+    
+    maxiDynamicsLite limiter;
+
 
 };
 

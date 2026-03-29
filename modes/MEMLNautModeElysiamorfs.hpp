@@ -32,6 +32,7 @@ public:
     void setupInterface() {
         interface.setup(kN_InputParams, ElysiamorfAudioApp<>::kN_Params);
         interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true);
+        interface.setModeInfo("elysia", "Elysiamorfs");
         interfacePtr = make_non_owning(interface);
 
         MEMLNaut::Instance()->setTogA2Callback([this](bool state) { // scr_ref no longer captured directly

@@ -27,6 +27,7 @@ public:
     void setupInterface() {
         interface.setup(kN_InputParams, XIASRIAudioApp<>::kN_Params);
         interface.bindInterface(InterfaceRL::INPUT_MODES::MACHINE_LISTENING);
+        interface.setModeInfo("xiasri", "XIASRI");
         interfacePtr = make_non_owning(interface);
     }
 

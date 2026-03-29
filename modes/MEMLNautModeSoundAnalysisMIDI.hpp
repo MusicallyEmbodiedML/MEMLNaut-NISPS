@@ -28,6 +28,7 @@ public:
     void setupInterface() {
         interface.setup(kN_InputParams, ThruAudioApp<>::kN_Params);
         interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK_AND_MACHINE_LISTENING);
+        interface.setModeInfo("samidi", "SoundAnalMIDI");
         interfacePtr = make_non_owning(interface);
     }
 

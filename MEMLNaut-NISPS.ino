@@ -1,6 +1,6 @@
 //machine config
 
-#define JOYSTICK_IS_4D false
+#define JOYSTICK_IS_4D true
 #define MEMLNAUT_ANALOG_INPUTS 3 + (JOYSTICK_IS_4D ? 1 : 0)
 #define MEMLNAUT_INPUT_MODE InterfaceRL::INPUT_MODES::JOYSTICK
 

@@ -20,7 +20,8 @@ public:
     void setupInterface() {
         interface.setup(kN_InputParams, ChannelStripAudioApp<>::kN_Params);
         interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true); //set 4D joystick
-        interfacePtr = make_non_owning(interface);    
+        interface.setModeInfo("chstrip", "ChannelStrip");
+        interfacePtr = make_non_owning(interface);
     }
 
     String getHelpTitle() {

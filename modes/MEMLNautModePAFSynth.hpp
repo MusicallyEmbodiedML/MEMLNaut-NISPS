@@ -23,7 +23,8 @@ public:
     void setupInterface() {
         interface.setup(kN_InputParams, PAFSynthAudioApp<>::kN_Params);
         interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true);
-        interfacePtr = make_non_owning(interface);    
+        interface.setModeInfo("pafsynth", "PAFSynth");
+        interfacePtr = make_non_owning(interface);
     }
 
     String getHelpTitle() {

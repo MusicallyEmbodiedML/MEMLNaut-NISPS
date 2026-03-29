@@ -22,11 +22,15 @@ public:
     // SharedBuffer<float, XiasriAnalysis::kN_Params> machine_list_buffer;
 
     VerbFXAudioApp<> audioAppVerbFX;
+    std::array<String, VerbFXAudioApp<>::nVoiceSpaces> voiceSpaceList;
     std::shared_ptr<MIDIInOut> midi_interf;
+    std::shared_ptr<BlockSelectView> enableView;
+
 
     void setupInterface() {
         interface.setup(kN_InputParams, VerbFXAudioApp<>::kN_Params);
         interface.bindInterface(MEMLNAUT_INPUT_MODE, JOYSTICK_IS_4D);
+        interface.setModeInfo("verbfx", "VerbFX");
         interfacePtr = make_non_owning(interface);
     }
 
@@ -46,10 +50,36 @@ public:
     }
 
     void addViews() {
+        enableView = std::make_shared<BlockSelectView>("FX Enable", TFT_YELLOW, 6, 80, 70, TFT_BLACK,
+            std::vector<String>{ "FilterBnk", "Reverb", "ShortDly", "MedDly", "LongDly", "Dly->Verb" },
+            TFT_BLUE, 2);
+        enableView->SetOnSelectCallback([this](size_t id) {
+            enableView->toggleAlt(id - 1);
+            queue_t& q = audioAppVerbFX.controlMessageQueue;
+            switch(id) {
+                case 1: { auto msg = VerbFXAudioApp<>::controlMessages::MSG_ENABLE_FILTERBANK;    queue_try_add(&q, &msg); } break;
+                case 2: { auto msg = VerbFXAudioApp<>::controlMessages::MSG_ENABLE_REVERB;        queue_try_add(&q, &msg); } break;
+                case 3: { auto msg = VerbFXAudioApp<>::controlMessages::MSG_ENABLE_SHORT_DELAY;   queue_try_add(&q, &msg); } break;
+                case 4: { auto msg = VerbFXAudioApp<>::controlMessages::MSG_ENABLE_MEDIUM_DELAY;  queue_try_add(&q, &msg); } break;
+                case 5: { auto msg = VerbFXAudioApp<>::controlMessages::MSG_ENABLE_LONG_DELAY;    queue_try_add(&q, &msg); } break;
+                case 6: { auto msg = VerbFXAudioApp<>::controlMessages::MSG_ENABLE_DELAY_TO_REVERB; queue_try_add(&q, &msg); } break;
+            }
+        });
+        MEMLNaut::Instance()->disp->AddView(enableView);
+
+        std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
+        voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
+        MEMLNaut::Instance()->disp->InsertViewAfter(interface.rlStatsView, voiceSpaceSelectView);
+        voiceSpaceSelectView->setOptions(voiceSpaceList);
+        voiceSpaceSelectView->setNewVoiceCallback(
+            [this](size_t idx) {
+                audioAppVerbFX.setVoiceSpace(idx);
+            });
     };
 
     void setupAudio(float sample_rate) {
         audioAppVerbFX.Setup(sample_rate, interfacePtr);
+        voiceSpaceList = audioAppVerbFX.getVoiceSpaceNames();
         // Reinitialize XiasriAnalysis filters after maxiSettings is properly configured
         // mlAnalysis.ReinitFilters();
     }
