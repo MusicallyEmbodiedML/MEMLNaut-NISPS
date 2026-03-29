@@ -29,6 +29,9 @@ public:
 
     void setupInterface() {
         interface.setup(kN_InputParams, VerbFXAudioApp<>::kN_Params);
+        interface.setRVX1Override([this](float value) {
+            audioAppVerbFX.setWetDryQueued(value);
+        });
         interface.bindInterface(MEMLNAUT_INPUT_MODE, JOYSTICK_IS_4D);
         interface.setModeInfo("verbfx", "VerbFX");
         interfacePtr = make_non_owning(interface);

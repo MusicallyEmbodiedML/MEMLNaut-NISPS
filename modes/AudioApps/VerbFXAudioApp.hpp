@@ -42,6 +42,11 @@ public:
     };
 
     queue_t controlMessageQueue;
+    queue_t wetdryQueue;
+
+    void setWetDryQueued(float value) {
+        queue_try_add(&wetdryQueue, &value);
+    }
 
     bool enableFilterbank=true;
     bool enableReverb=true;
@@ -72,6 +77,7 @@ public:
         voiceSpaces[0] = {"Default", voiceSpaceDefault};
         currentVoiceSpace = voiceSpaces[0].mappingFunction;
         queue_init(&controlMessageQueue, sizeof(controlMessages), 1);
+        queue_init(&wetdryQueue, sizeof(float), 1);
     };
 
 
@@ -85,7 +91,7 @@ public:
         smoother.Process(neuralNetOutputs.data(), smoothParams.data());
 
         //mapping
-        wetdry_mix_ = (smoothParams[0] * 0.9f) + 0.1f;
+        // wetdry_mix_ = (smoothParams[0] * 0.9f) + 0.1f;
         
         lp0fb = smoothParams[1] * 0.9f;
         lp0cutoff = (smoothParams[2] * 0.5f) + 0.05f;
@@ -145,6 +151,7 @@ public:
 
         verbVsDelayLevel = smoothParams[43];
         delayToVerbLevel = smoothParams[44] * 0.99f;
+
         filterBankDelayXFade = smoothParams[45];
 
         //XFADE
@@ -219,7 +226,7 @@ public:
 
 
         // Mix dry
-        y = (y * wetdry_mix_) + (mix * (1.f - wetdry_mix_));
+        y = sqrtf(y * wetdry_mix_) + sqrtf(mix * (1.f - wetdry_mix_));
 
 
         stereosample_t ret { y, y };
@@ -257,7 +264,14 @@ public:
                     break;
             }
         }
+        {
+            float v;
+            if (queue_try_remove(&wetdryQueue, &v)) wetdryKnobValue = v;
+        }
         currentVoiceSpace(params);
+        if (wetdryKnobValue >= 0.f) {
+            wetdry_mix_ = wetdryKnobValue;
+        }
     }
     
 
@@ -310,6 +324,7 @@ protected:
     maxiDCBlocker dcb;
 
     float wetdry_mix_{0.5f};
+    float wetdryKnobValue{0.5f};
 
     // mapping
     float lp0fb{0}, lp0cutoff{0};
