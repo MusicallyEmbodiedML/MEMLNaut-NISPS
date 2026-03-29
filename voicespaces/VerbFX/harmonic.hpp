@@ -1,7 +1,7 @@
-#ifndef __VOICE_SPACE_VERBFX_BASIC_HPP__
-#define __VOICE_SPACE_VERBFX_BASIC_HPP__
+#ifndef __VOICE_SPACE_VERBFX_HARMONIC_HPP__
+#define __VOICE_SPACE_VERBFX_HARMONIC_HPP__
 
-#define VOICE_SPACE_VERBFX_DEFAULT_BODY \
+#define VOICE_SPACE_VERBFX_HARMONIC_BODY \
         filterBankDelayXFade = smoothParams[0]; \
 \
         lp0fb = smoothParams[1] * 0.9f;\
@@ -22,7 +22,7 @@
         lp5fb = smoothParams[11] * 0.98f;\
         lp5cutoff = (smoothParams[12] * 0.5f) + 0.05f;\
 \
-        lp6fb = smoothParams[13] * 0.9;\
+        lp6fb = smoothParams[13] * 0.9f;\
         lp6cutoff = (smoothParams[14] * 0.5f) + 0.05f;\
 \
         lp7fb = smoothParams[15] * 0.9f;\
@@ -33,39 +33,37 @@
         allp2fb = smoothParams[19] * 0.9f;\
         allp3fb = smoothParams[20] * 0.9f;\
 \
-        filterBankF0 = 40.f + (smoothParams[21] * 40.f);\
-        filterBankF1 = 80.f + (smoothParams[22] * 80.f);\
-        filterBankF2 = 160.f + (smoothParams[23] * 160.f);\
-        filterBankF3 = 320.f + (smoothParams[24] * 320.f);\
-        filterBankF4 = 640.f + (smoothParams[25] * 640.f);\
-        filterBankF5 = 1280.f + (smoothParams[26] * 1280.f);\
-        filterBankF6 = 2560.f + (smoothParams[27] * 2560.f);\
-        filterBankF7 = 5120.f + (smoothParams[28] * 5120.f);\
+        filterBankF0 = 80.f  + (smoothParams[21] * 40.f);\
+        filterBankF1 = 180.f + (smoothParams[22] * 40.f);\
+        filterBankF2 = 280.f + (smoothParams[23] * 40.f);\
+        filterBankF3 = 380.f + (smoothParams[24] * 40.f);\
+        filterBankF4 = 480.f + (smoothParams[25] * 40.f);\
+        filterBankF5 = 580.f + (smoothParams[26] * 40.f);\
+        filterBankF6 = 680.f + (smoothParams[27] * 40.f);\
+        filterBankF7 = 780.f + (smoothParams[28] * 40.f);\
 \
-        filterBankRes0 = 1.f + (smoothParams[29] * 19.f);\
-        filterBankRes1 = 1.f + (smoothParams[30] * 19.f);\
-        filterBankRes2 = 1.f + (smoothParams[31] * 19.f);\
-        filterBankRes3 = 1.f + (smoothParams[32] * 19.f);\
-        filterBankRes4 = 1.f + (smoothParams[33] * 19.f);\
-        filterBankRes5 = 1.f + (smoothParams[34] * 19.f);\
-        filterBankRes6 = 1.f + (smoothParams[35] * 19.f);\
-        filterBankRes7 = 1.f + (smoothParams[36] * 19.f);\
+        filterBankRes0 = 1.f + (sqrtf(smoothParams[29]) * 19.f);\
+        filterBankRes1 = 1.f + (sqrtf(smoothParams[30]) * 19.f);\
+        filterBankRes2 = 1.f + (sqrtf(smoothParams[31]) * 19.f);\
+        filterBankRes3 = 1.f + (sqrtf(smoothParams[32]) * 19.f);\
+        filterBankRes4 = 1.f + (sqrtf(smoothParams[33]) * 19.f);\
+        filterBankRes5 = 1.f + (sqrtf(smoothParams[34]) * 19.f);\
+        filterBankRes6 = 1.f + (sqrtf(smoothParams[35]) * 19.f);\
+        filterBankRes7 = 1.f + (sqrtf(smoothParams[36]) * 19.f);\
 \
         ddelayTime = 10.f + (smoothParams[37] * 16373.f);\
-        ddelayFeedback = (smoothParams[38] * 0.98f);\
+        ddelayFeedback = smoothParams[38] * 0.98f;\
 \
         ddelayTime1 = 10.f + (smoothParams[39] * 2037.f);\
-        ddelayFeedback1 = (smoothParams[40] * 0.98f);\
+        ddelayFeedback1 = smoothParams[40] * 0.98f;\
 \
         ddelayTime2 = 10.f + (smoothParams[41] * 501.f);\
-        ddelayFeedback2 = (smoothParams[42] * 0.98f);\
+        ddelayFeedback2 = smoothParams[42] * 0.98f;\
 \
         verbVsDelayLevel = smoothParams[43];\
         delayToVerbLevel = smoothParams[44] * 0.99f;\
 \
-\
         delayMorph = smoothParams[45];\
         delayBlend = smoothParams[46];
-
 
 #endif
