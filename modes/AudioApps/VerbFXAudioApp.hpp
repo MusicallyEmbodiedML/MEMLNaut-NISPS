@@ -20,7 +20,7 @@
 
 
 
-template<size_t NPARAMS=46> 
+template<size_t NPARAMS=48>
 class VerbFXAudioApp : public AudioAppBase<NPARAMS>
 {
 public:
@@ -154,6 +154,9 @@ public:
 
         filterBankDelayXFade = smoothParams[45];
 
+        delayMorph = smoothParams[46];
+        delayBlend = smoothParams[47];
+
         //XFADE
 
         const float filterBankDelayFBLevel = sqrtf(filterBankDelayXFade);
@@ -174,7 +177,7 @@ public:
             filterBankOut += filterBank6.bandpassChamberlain(filterBankIn, filterBankF6, filterBankRes6);
             filterBankOut += filterBank7.bandpassChamberlain(filterBankIn, filterBankF7, filterBankRes7);
 
-            filterBankOut *= 0.5f;
+            filterBankOut *= 0.125f;
         }
 
         ////////////// DELAYS
@@ -189,7 +192,13 @@ public:
         float delayed2 = enableShortDelay ? ddelay2.read(ddelayTime2) : 0.f;
         ddelay2.write(delayIn + (ddelayFeedback2 * delayed2));
 
-        float delaySum = delayed + delayed1 + delayed2;
+        float a = fminf(delayMorph * 2.f, 1.f);
+        float b = fmaxf(delayMorph * 2.f - 1.f, 0.f);
+        constexpr float kEqualMix = 0.57735f; // 1/sqrt(3), constant-power equal mix
+        float w_short  = kEqualMix + delayBlend * (sqrtf(1.f - a)                    - kEqualMix);
+        float w_medium = kEqualMix + delayBlend * (sqrtf(a) * sqrtf(1.f - b)         - kEqualMix);
+        float w_long   = kEqualMix + delayBlend * (sqrtf(a) * sqrtf(b)               - kEqualMix);
+        float delaySum = (w_short * delayed2) + (w_medium * delayed1) + (w_long * delayed);
 
         //////////////// VERB
         float verbIn = enableReverb ? filterBankOut : 0.f;
@@ -226,7 +235,7 @@ public:
 
 
         // Mix dry
-        y = sqrtf(y * wetdry_mix_) + sqrtf(mix * (1.f - wetdry_mix_));
+        y = (y * sqrtf(wetdry_mix_)) + (mix * sqrtf(1.f - wetdry_mix_));
 
 
         stereosample_t ret { y, y };
@@ -344,6 +353,7 @@ protected:
     float ddelayTime1{0}, ddelayFeedback1{0};
     float ddelayTime2{0}, ddelayFeedback2{0};
     float verbVsDelayLevel{0}, delayToVerbLevel{0}, filterBankDelayXFade{0};
+    float delayMorph{0.5f}, delayBlend{0.f};
 
     OnePoleSmoother<kN_Params> smoother{150.f, kSampleRate};
     
