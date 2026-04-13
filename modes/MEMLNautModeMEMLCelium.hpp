@@ -2,9 +2,11 @@
 
 #include "../src/memllib/interface/MIDIInOut.hpp"
 #include "../src/memllib/hardware/memlnaut/display/XYPadView.hpp"
+#include "../src/memllib/hardware/memlnaut/display/BlockSelectView.hpp"
 #include "../src/memllib/hardware/memlnaut/MEMLNaut.hpp"
 #include "AudioApps/MEMLCeliumAudioApp.hpp"
 #include "../src/memllib/examples/InterfaceRL.hpp"
+#include "../src/memllib/audio/FocusManager.hpp"
 #include "../src/memllib/PicoDefs.hpp"
 #include "MEMLNautMode.hpp"
 #include <memory>
@@ -22,12 +24,21 @@ public:
 
     bool sequencerPlaying = false;
 
+    FocusManager<MEMLCeliumAudioApp<>::kN_Params, 2> focusManager;
+
 
     void setupInterface() {
         interface.setup(kN_InputParams, MEMLCeliumAudioApp<>::kN_Params);
         interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true);
         interface.setModeInfo("memlcelium", "MEMLCelium");
         interfacePtr = make_non_owning(interface);
+
+        focusManager.setGroupName(0, "Seq");
+        focusManager.setGroupName(1, "Synth");
+        focusManager.setParamGroups(MEMLCeliumAudioApp<>::kParamGroupMask);
+        interface.paramTransformHook = [this](std::vector<float>& p) {
+            focusManager.applyInPlace(p);
+        };
 
         MEMLNaut::Instance()->setTogA2Callback([this](bool state) { // scr_ref no longer captured directly
             Serial.println(state ? "TogA2 ON" : "TogA2 OFF");
@@ -76,6 +87,19 @@ public:
     }
 
     void addViews() {
+        // Focus screen — select which parameter groups are live
+        auto focusView = std::make_shared<BlockSelectView>(
+            "Focus", TFT_CYAN, 2, 120, 70, TFT_BLACK,
+            std::vector<String>{"Seq", "Synth"}, TFT_DARKGREY, 2);
+
+        focusView->SetOnSelectCallback([this, focusView](size_t id) {
+            size_t groupIdx = id - 1;
+            uint32_t newMask = focusManager.getSelectedMask() ^ (1u << groupIdx);
+            focusManager.setFocus(newMask, interface.getLastAction());
+            focusView->toggleAlt(groupIdx);
+        });
+        MEMLNaut::Instance()->disp->InsertViewAfter(interface.rlStatsView, focusView);
+
         std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
         voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
 

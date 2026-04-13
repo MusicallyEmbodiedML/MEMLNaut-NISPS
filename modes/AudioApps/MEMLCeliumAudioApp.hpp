@@ -32,6 +32,26 @@ public:
     static constexpr float frequencies[nFREQs] = {100, 200, 400,800, 400, 800, 100,1600,100,400,100,50,1600,200,100,800,400};
     static constexpr size_t nVoiceSpaces=7;
 
+    // Focus group bitmasks
+    static constexpr uint32_t kFocusSeq = (1u << 0);
+    static constexpr uint32_t kFocusSyn = (1u << 1);
+
+    // Per-param group membership: params 0-13 = sequencer, 14-63 = synthesis
+    static constexpr std::array<uint32_t, NPARAMS> kParamGroupMask = {
+        // 0-13: sequencer (14 entries)
+        kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq,
+        kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq,
+        // 14-63: synthesis (50 entries)
+        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
+        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
+        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
+        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
+        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
+        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
+        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
+        kFocusSyn,
+    };
+
     std::array<VoiceSpace<NPARAMS>, nVoiceSpaces> voiceSpaces;
 
     VoiceSpaceFn<NPARAMS> currentVoiceSpace;
