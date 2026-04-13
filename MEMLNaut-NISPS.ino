@@ -31,6 +31,7 @@
 #include "modes/MEMLNautModeBreakOr.hpp"
 #include "modes/MEMLNautModeVerbFX.hpp"
 #include "modes/MEMLNautModeElysiamorfs.hpp"
+#include "modes/MEMLNautModeMEMLCelium.hpp"
 
 //hook up the memlnaut mode
 
@@ -40,7 +41,8 @@
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeBreakOr
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeElysiamorfs
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeChannelStrip
-#define MEMLNAUT_MODE_TYPE MEMLNautModePAFSynth
+// #define MEMLNAUT_MODE_TYPE MEMLNautModePAFSynth
+#define MEMLNAUT_MODE_TYPE MEMLNautModeMEMLCelium
 
 MEMLNAUT_MODE_TYPE AUDIO_MEM MEMLNautModeHub;
 

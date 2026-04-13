@@ -10,7 +10,7 @@
 
 class MEMLNautModeChannelStrip {
 public:
-    constexpr static size_t kN_InputParams = 4; // joystick x, y, left and right joysticks
+    constexpr static size_t kN_InputParams = MEMLNAUT_ANALOG_INPUTS;  
     ChannelStripAudioApp<> audioAppChannelStrip;
     std::array<String, ChannelStripAudioApp<>::nVoiceSpaces> voiceSpaceList;
     InterfaceRL interface;

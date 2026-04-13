@@ -16,7 +16,7 @@
 
 class MEMLNautModeBreakOr {
 public:
-    constexpr static size_t kN_InputParams = 4; // joystick x, y, rotate
+    constexpr static size_t kN_InputParams = MEMLNAUT_ANALOG_INPUTS;  
 
     USeqI2C i2cOut;
     inline static BreakOrAudioApp<> audioAppBreakOr;
