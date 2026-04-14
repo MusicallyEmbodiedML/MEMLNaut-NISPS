@@ -23,7 +23,7 @@ static constexpr size_t kMEMLCeliumNSequences = 2;
 // MIDI notes assigned to each sequencer index
 // static constexpr uint8_t kMEMLCeliumSeqNotes[kMEMLCeliumNSequences] = {60};
 
-template<size_t NPARAMS=64>
+template<size_t NPARAMS=56>
 class MEMLCeliumAudioApp : public AudioAppBase<NPARAMS>
 {
 public:
@@ -36,20 +36,18 @@ public:
     static constexpr uint32_t kFocusSeq = (1u << 0);
     static constexpr uint32_t kFocusSyn = (1u << 1);
 
-    // Per-param group membership: params 0-13 = sequencer, 14-63 = synthesis
+    // Per-param group membership: params 0-13 = sequencer, 14-55 = synthesis
     static constexpr std::array<uint32_t, NPARAMS> kParamGroupMask = {
         // 0-13: sequencer (14 entries)
         kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq,
         kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq,
-        // 14-63: synthesis (50 entries)
+        // 14-55: synthesis (42 entries)
         kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
         kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
         kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
         kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
         kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
         kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
-        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
-        kFocusSyn,
     };
 
     std::array<VoiceSpace<NPARAMS>, nVoiceSpaces> voiceSpaces;
@@ -160,14 +158,7 @@ public:
 
         float v0 = p0 + p1 + p2;// + p3;
 
-        const float rm = p0 * p1 * p2;// * p3;
 
-        v0 = v0 + (rm * rmGain);
-
-
-        float shape = sinf(v0 * TWOPI);
-        shape = sinf(((shape * TWOPI) * sineShapeGain) + sineShapeASym);
-        v0 = v0 + (shape * sineShapeMix);
 
         v0 = v0 * envval;
         feedback = v0 * feedbackGain;
@@ -192,10 +183,19 @@ public:
 
         float v1 = v1p0 + v1p1 + v1p2;
 
+        const float rm = v1p0 * v1p1 * v1p2;// * p3;
+
+        v1 = ((1.0 - rmGain) * v1) + (rm * rmGain);
+
         v1 = v1 * v1Envval;
         /////
 
         float mix = v0 + v1;
+
+        float shape = sinf(mix * TWOPI);
+        shape = sinf(((shape * TWOPI) * sineShapeGain) + sineShapeASym);
+        mix = mix + (shape * sineShapeMix);
+
 
         mix = tanhf(mix);
 
@@ -252,9 +252,11 @@ public:
             switch(seqIdx) {
                 case 0:
                     v0AmpEnv.trigger(noteVel);
+                    v0PitchEnv.trigger(1.0);                    
                     break;
                 case 1:
                     v1AmpEnv.trigger(noteVel);
+                    v1PitchEnv.trigger(1.0);                    
                     break;
             }
         };
@@ -265,9 +267,12 @@ public:
             switch(seqIdx) {
                 case 0:
                     v0AmpEnv.release();
+                    v0PitchEnv.release();                    
+
                     break;
                 case 1:
                     v1AmpEnv.release();
+                    v1PitchEnv.release();
                     break;
             }
         };
@@ -309,46 +314,47 @@ public:
         p2Gain=1.f; 
         p3Gain=1.f; 
         
-        detune1 = 1.0f; 
-        detune2 = 1.1f; 
+        detune1 = 1.01f; 
+        detune2 = 1.02f; 
         // detune3 = 1.2f; 
 
         size_t paramIdx = 14;  // 0-13 reserved for seqEngine (2 sequencers × 7 params)
+        auto sqParam = [&]() { const float p = params[paramIdx++]; return p * p; };
 
-        baseFreq = 20.f + (params[paramIdx++] * 80.f);
+        baseFreq = 60.f + (params[paramIdx++] * 10.f);
         
         paf0_cf = (params[paramIdx++]  * 2.f); 
         paf1_cf = (params[paramIdx++]  * 2.f); 
         paf2_cf = (params[paramIdx++] * 2.f); 
         // paf3_cf = (params[paramIdx++] * 2.f); 
         
-        paf0_bw = 10.f + (params[paramIdx++] * 400.f); 
-        paf1_bw = 10.f + (params[paramIdx++] * 50.f); 
-        paf2_bw = 10.f + (params[paramIdx++] * 50.f); 
+        paf0_bw = 10.f + (params[paramIdx++] * 100.f); 
+        paf1_bw = 10.f + (params[paramIdx++] * 100.f); 
+        paf2_bw = 10.f + (params[paramIdx++] * 100.f); 
         // paf3_bw = 10.f + (params[paramIdx++] * 100.f); 
                 
-        paf0_vib = params[paramIdx++] * params[paramIdx++] * 0.01f; 
+        paf0_vib = sqParam() * 0.01f;
         paf1_vib = paf0_vib; 
         paf2_vib = paf0_vib; 
         // paf3_vib = 0.f; 
         
-        paf0_vfr = (params[paramIdx++] * params[paramIdx++]* 15.0f);
+        paf0_vfr = sqParam() * 15.0f;
         paf1_vfr = paf0_vfr;
         paf2_vfr = paf0_vfr; 
         // paf3_vfr = 0.f; 
         
-        paf0_shift =  -500.f + (params[paramIdx++] * 500.f); 
-        paf1_shift = -300.f + (params[paramIdx++] * 600.f); 
+        paf0_shift =  -100.f + (params[paramIdx++] * 200.f); 
+        paf1_shift = -100.f + (params[paramIdx++] * 200.f); 
         paf2_shift = -100.f + (params[paramIdx++] * 200.f); 
         // paf3_shift = -300.f + (params[paramIdx++] * 300.f); 
                 
         v0AmpEnv.setup(0.01f + (params[paramIdx++] * 1.f),
-            0.5f + params[paramIdx++] * params[paramIdx++] * 200.f,
-            0.01 + (params[paramIdx++] * 0.5f),1.f+ params[paramIdx++] * params[paramIdx++] * 800.f, sampleRatef ); 
+            0.5f + sqParam() * 200.f,
+            0.01 + (params[paramIdx++] * 0.5f), 1.f + sqParam() * 800.f, sampleRatef);
 
-        v0PitchEnv.setup(0.01f + (params[paramIdx++] * 3.f), 
-            0.5f + params[paramIdx++] * params[paramIdx++] * 100.f,
-            0.f, 0.1f, sampleRatef ); 
+        v0PitchEnv.setup(0.01f + (params[paramIdx++] * 3.f),
+            0.5f + sqParam() * 100.f,
+            0.f, 0.1f, sampleRatef);
 
         v0PitchEmph = params[paramIdx++]* 50.f;
         
@@ -357,7 +363,7 @@ public:
         sineShapeMix = params[paramIdx++]; 
         
         rmGain = params[paramIdx++];
-        feedbackGain = 0.1f;
+        feedbackGain = 0; //0.1f;
 
         fbSmoothAlpha=0.5f;
 
@@ -366,28 +372,28 @@ public:
         v1p1Gain=1.f;
         v1p2Gain=1.f;
 
-        v1BaseFreq = 100.f + (params[paramIdx++] * 400.f);
-        v1Detune1 = 0.5f + (params[paramIdx++] * 3.5f);
-        v1Detune2 = 0.5f + (params[paramIdx++] * 3.5f);
+        v1BaseFreq = 300.f + (params[paramIdx++] * 10.f);
+        v1Detune1 = 1.0f + (params[paramIdx++] * 1.0f);
+        v1Detune2 = 1.0f + (params[paramIdx++] * 1.0f);
 
-        v1paf0_cf = (params[paramIdx++] * 3.f);
-        v1paf1_cf = (params[paramIdx++] * 3.f);
-        v1paf2_cf = (params[paramIdx++] * 3.f);
+        v1paf0_cf = (params[paramIdx++] * 2.f);
+        v1paf1_cf = (params[paramIdx++] * 2.f);
+        v1paf2_cf = (params[paramIdx++] * 2.f);
 
         v1paf0_bw = 10.f + (params[paramIdx++] * 400.f);
         v1paf1_bw = 10.f + (params[paramIdx++] * 600.f);
         v1paf2_bw = 10.f + (params[paramIdx++] * 500.f);
 
-        v1paf0_shift = -800.f + (params[paramIdx++] * 800.f);
+        v1paf0_shift = -500.f + (params[paramIdx++] * 1000.f);
         v1paf1_shift = -300.f + (params[paramIdx++] * 600.f);
         v1paf2_shift = -100.f + (params[paramIdx++] * 200.f);
 
         v1AmpEnv.setup(0.01f + (params[paramIdx++] * 1.f),
-            0.5f + params[paramIdx++] * params[paramIdx++] * 100.f,
-            0.01 + (params[paramIdx++] * 0.3f), 1.f + params[paramIdx++] * params[paramIdx++] * 200.f, sampleRatef);
+            0.5f + sqParam() * 100.f,
+            0.01 + (params[paramIdx++] * 0.3f), 1.f + sqParam() * 200.f, sampleRatef);
 
         v1PitchEnv.setup(0.01f + (params[paramIdx++] * 3.f),
-            0.5f + params[paramIdx++] * params[paramIdx++] * 100.f,
+            0.5f + sqParam() * 100.f,
             0.f, 0.1f, sampleRatef);
 
         v1PitchEmph = params[paramIdx++] * 10.f;
