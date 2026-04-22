@@ -4,8 +4,8 @@
 // Uses Arduino-Pico SDK (Earle Philhower).
 //
 // Wiring:
-//   Pico2W GP0 (Serial1 TX) -> MEMLNaut pin 35 (SENSOR_RX)
-//   Pico2W GP1 (Serial1 RX) -> MEMLNaut pin 34 (SENSOR_TX)  [optional]
+//   Pico2W GP0 (Serial1 TX) -> MEMLNaut pin 33 (SENSOR_RX)
+//   Pico2W GP1 (Serial1 RX) -> MEMLNaut pin 32 (SENSOR_TX)  [optional]
 //   Pico2W GND              -> MEMLNaut GND
 //
 // N_FLOATS must match kN_SerialInputs in MEMLNautModeBunty.hpp (default: 3)

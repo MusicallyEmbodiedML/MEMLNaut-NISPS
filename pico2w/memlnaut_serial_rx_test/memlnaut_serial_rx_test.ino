@@ -12,10 +12,9 @@
 
 #include <Arduino.h>
 
-constexpr size_t   N_FLOATS   = 3;
+constexpr size_t   N_FLOATS   = 6;   // 2 boards × 3 floats, must match base N_BOARDS * N_FLOATS_PER_BOARD
 constexpr uint32_t BAUD_RATE  = 115200;
 
-// SENSOR_RX = pin 35, SENSOR_TX = pin 34  (from Pins.hpp)
 constexpr uint8_t SENSOR_RX = 35;
 constexpr uint8_t SENSOR_TX = 34;
 
@@ -34,6 +33,7 @@ static bool     escape_next = false;
 // Packet and error counters
 static uint32_t packets_rx  = 0;
 static uint32_t slip_errors = 0;
+static uint32_t raw_bytes   = 0;
 static uint32_t last_report_ms = 0;
 
 static void process_packet() {
@@ -105,37 +105,34 @@ static void slip_feed(uint8_t b) {
 void setup() {
     Serial.begin(115200);
     delay(1500);   // give USB serial time to connect
-
+    while(!Serial) {}
     Serial1.setRX(SENSOR_RX);
     Serial1.setTX(SENSOR_TX);
     Serial1.begin(BAUD_RATE);
 
     Serial.println("memlnaut_serial_rx_test");
-    Serial.print("Listening on SENSOR_RX (pin ");
-    Serial.print(SENSOR_RX);
-    Serial.print(") at ");
-    Serial.print(BAUD_RATE);
-    Serial.println(" baud");
+    Serial.print("Serial1 ready: ");
+    Serial.println(Serial1 ? "yes" : "NO — UART failed to init");
+    Serial.print("SENSOR_RX="); Serial.print(SENSOR_RX);
+    Serial.print("  SENSOR_TX="); Serial.print(SENSOR_TX);
+    Serial.print("  baud="); Serial.println(BAUD_RATE);
     Serial.println("Expecting " + String(N_FLOATS) + " floats per packet (SLIP)");
     Serial.println("---");
 }
 
 void loop() {
     while (Serial1.available()) {
+        raw_bytes++;
         slip_feed(static_cast<uint8_t>(Serial1.read()));
     }
 
-    // Print a heartbeat / stats line every 5 s even if nothing arrives
+    // Print a heartbeat / stats line every 2 s even if nothing arrives
     uint32_t now = millis();
-    if (now - last_report_ms >= 5000) {
+    if (now - last_report_ms >= 2000) {
         last_report_ms = now;
-        if (packets_rx == 0 && slip_errors == 0) {
-            Serial.println("[waiting for data...]");
-        } else {
-            Serial.print("[stats] packets=");
-            Serial.print(packets_rx);
-            Serial.print("  errors=");
-            Serial.println(slip_errors);
-        }
+        Serial.print("[stats] packets="); Serial.print(packets_rx);
+        Serial.print("  errors="); Serial.print(slip_errors);
+        Serial.print("  raw_bytes="); Serial.print(raw_bytes);
+        Serial.print("  Serial1.available="); Serial.println(Serial1.available());
     }
 }

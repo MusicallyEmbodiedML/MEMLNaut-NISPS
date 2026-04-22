@@ -23,8 +23,9 @@ https://opensource.org/licenses/MIT.
 */
 // #define SHIFT_BUFFER_SIZE 16384
 // #define SHIFT_BUFFER_SIZE 4800
-#define SHIFT_BUFFER_SIZE 8192
-//#define SHIFT_BUFFER_SIZE 1024
+// #define SHIFT_BUFFER_SIZE 8192
+// #define SHIFT_BUFFER_SIZE 1024
+#define SHIFT_BUFFER_SIZE 2400
 
 namespace daisysp
 {

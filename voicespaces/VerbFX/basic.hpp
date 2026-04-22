@@ -51,10 +51,10 @@
         filterBankRes6 = 1.f + (smoothParams[35] * 19.f);\
         filterBankRes7 = 1.f + (smoothParams[36] * 19.f);\
 \
-        ddelayTime = 10.f + (smoothParams[37] * 16373.f);\
+        ddelayTime = 10.f + (smoothParams[37] * 501.f);\
         ddelayFeedback = (smoothParams[38] * 0.98f);\
 \
-        ddelayTime1 = 10.f + (smoothParams[39] * 2037.f);\
+        ddelayTime1 = 10.f + (smoothParams[39] * 501.f);\
         ddelayFeedback1 = (smoothParams[40] * 0.98f);\
 \
         ddelayTime2 = 10.f + (smoothParams[41] * 501.f);\
