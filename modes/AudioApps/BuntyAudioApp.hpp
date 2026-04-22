@@ -223,13 +223,13 @@ public:
         // pitch shift
         float pitchshifted = pitchshifter_.Process(mix);
         // // Mix the original signal with the pitch-shifted signal
-        mix = (mix * (1.f - pitchshifter_mix_)) + (pitchshifted * pitchshifter_mix_);
+        pitchshifted = (mix * (1.f - pitchshifter_mix_)) + (pitchshifted * pitchshifter_mix_);
 
 
         /////////////////// FILTERBANK
 
-        float filterBankIn = mix + (filterBankDelayFBLevel * ddelayFeedback);
-        float filterBankOut=mix;
+        float filterBankIn = pitchshifted + (filterBankDelayFBLevel * ddelayFeedback);
+        float filterBankOut=pitchshifted;
 
         if (enableFilterbank) {
             filterBankOut = filterBank0.bandpassChamberlain(filterBankIn,  filterBankF0, filterBankRes0);
@@ -295,11 +295,12 @@ public:
         delaysFB = delaySum;
         verbFB = verbOut;
 
-        // Mix v0 synth into reverb output
-        y += v0out * synthMixLevel;
 
         // Mix dry
-        y = (y * sqrtf(wetdry_mix_)) + (mix * sqrtf(1.f - wetdry_mix_));
+        y = (y * sqrtf(wetdry_mix_)) + (mix * 1.5f * sqrtf(1.f - wetdry_mix_));
+
+        // Mix v0 synth into reverb output
+        y += v0out * synthMixLevel;
 
 
         stereosample_t ret { y, y };
