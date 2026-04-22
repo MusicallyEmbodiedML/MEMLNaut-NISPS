@@ -16,9 +16,10 @@
 class MEMLNautModeSoundAnalysisMIDI {
 public:
     constexpr static size_t kN_InputParams = XiasriAnalysis::kN_Params + 3;  //ML + joystick
+    static constexpr size_t kDesiredSampleRate = 48000;
     InterfaceRL interface;
     std::shared_ptr<InterfaceRL> interfacePtr;
-    XiasriAnalysis mlAnalysis{kSampleRate};
+    XiasriAnalysis mlAnalysis{static_cast<float>(kSampleRate)};
     SharedBuffer<float, XiasriAnalysis::kN_Params> machine_list_buffer;
 
     ThruAudioApp<> audioAppSoundAnalysisMIDI;

@@ -21,12 +21,6 @@ https://opensource.org/licenses/MIT.
 /** Shift can be 30-100 ms lets just start with 50 for now.
 0.050 * SR = 2400 samples (at 48kHz)
 */
-// #define SHIFT_BUFFER_SIZE 16384
-// #define SHIFT_BUFFER_SIZE 4800
-// #define SHIFT_BUFFER_SIZE 8192
-// #define SHIFT_BUFFER_SIZE 1024
-#define SHIFT_BUFFER_SIZE 2400
-
 namespace daisysp
 {
 static inline uint32_t hash_xs32(uint32_t x)
@@ -62,6 +56,7 @@ f = (12 - 1) * 48000 / SHIFT_BUFFER_SIZE;
 
 \todo - move hash_xs32 and myrand to dsp.h and give appropriate names
 */
+template<size_t SHIFT_BUFFER_SIZE = 2400>
 class PitchShifter
 {
   public:

@@ -2,6 +2,7 @@
 
 #include "../src/memllib/interface/MIDIInOut.hpp"
 #include "./AudioApps/BuntyAudioApp.hpp"
+#include "./AudioApps/BuntySequencingView.hpp"
 #include "MEMLNautMode.hpp"
 #include <memory>
 #include <array>
@@ -17,6 +18,7 @@ class MEMLNautModeBunty {
 public:
     constexpr static size_t kN_InputParams = MEMLNAUT_ANALOG_INPUTS;
     constexpr static size_t kN_SerialInputs = MEMLNAUT_ANALOG_INPUTS;
+    static constexpr size_t kDesiredSampleRate = 32000;
     InterfaceRL interface;
     std::shared_ptr<InterfaceRL> interfacePtr;
 
@@ -24,6 +26,7 @@ public:
     std::array<String, BuntyAudioApp<>::nVoiceSpaces> voiceSpaceList;
     std::shared_ptr<MIDIInOut> midi_interf;
     std::shared_ptr<BlockSelectView> enableView;
+    std::shared_ptr<BuntySequencingView> sequencingView_;
     std::shared_ptr<UARTInput> uartInput;
 
 
@@ -57,8 +60,14 @@ public:
     }
 
     void addViews() {
-        enableView = std::make_shared<BlockSelectView>("FX Enable", TFT_YELLOW, 6, 80, 70, TFT_BLACK,
-            std::vector<String>{ "FilterBnk", "Reverb", "ShortDly", "MedDly", "LongDly", "Dly->Verb" },
+        sequencingView_ = std::make_shared<BuntySequencingView>("Sequencing");
+        sequencingView_->setBPMCallback([this](int bpm) {
+            audioAppBunty.setBPMQueued((float)bpm);
+        });
+        MEMLNaut::Instance()->disp->AddView(sequencingView_);
+
+        enableView = std::make_shared<BlockSelectView>("FX Enable", TFT_YELLOW, 8, 60, 60, TFT_BLACK,
+            std::vector<String>{ "FiltBnk", "Reverb", "ShortDly", "MedDly", "LongDly", "Dly>Verb", "PitchSft", "RingMod" },
             TFT_BLUE, 2);
         enableView->SetOnSelectCallback([this](size_t id) {
             enableView->toggleAlt(id - 1);
@@ -70,6 +79,8 @@ public:
                 case 4: { auto msg = BuntyAudioApp<>::controlMessages::MSG_ENABLE_MEDIUM_DELAY;  queue_try_add(&q, &msg); } break;
                 case 5: { auto msg = BuntyAudioApp<>::controlMessages::MSG_ENABLE_LONG_DELAY;    queue_try_add(&q, &msg); } break;
                 case 6: { auto msg = BuntyAudioApp<>::controlMessages::MSG_ENABLE_DELAY_TO_REVERB; queue_try_add(&q, &msg); } break;
+                case 7: { auto msg = BuntyAudioApp<>::controlMessages::MSG_ENABLE_PITCHSHIFT;    queue_try_add(&q, &msg); } break;
+                case 8: { auto msg = BuntyAudioApp<>::controlMessages::MSG_ENABLE_RINGMOD;       queue_try_add(&q, &msg); } break;
             }
         });
         MEMLNaut::Instance()->disp->AddView(enableView);

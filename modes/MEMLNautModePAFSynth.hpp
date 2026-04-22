@@ -12,7 +12,8 @@
 
 class MEMLNautModePAFSynth {
 public:
-    constexpr static size_t kN_InputParams = MEMLNAUT_ANALOG_INPUTS;  
+    constexpr static size_t kN_InputParams = MEMLNAUT_ANALOG_INPUTS;
+    static constexpr size_t kDesiredSampleRate = 48000;
 
     inline static PAFSynthAudioApp<> audioAppPAFSynth;
     std::array<String, PAFSynthAudioApp<>::nVoiceSpaces> voiceSpaceList;

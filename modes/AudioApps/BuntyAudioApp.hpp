@@ -61,13 +61,20 @@ public:
         MSG_ENABLE_MEDIUM_DELAY,
         MSG_ENABLE_LONG_DELAY,
         MSG_ENABLE_DELAY_TO_REVERB,
+        MSG_ENABLE_PITCHSHIFT,
+        MSG_ENABLE_RINGMOD,
     };
 
     queue_t controlMessageQueue;
     queue_t wetdryQueue;
+    queue_t bpmQueue;
 
     void setWetDryQueued(float value) {
         queue_try_add(&wetdryQueue, &value);
+    }
+
+    void setBPMQueued(float bpm) {
+        queue_try_add(&bpmQueue, &bpm);
     }
 
     bool enableFilterbank=true;
@@ -76,6 +83,8 @@ public:
     bool enableMediumDelay=true;
     bool enableLongDelay=true;
     bool enableDelayToReverb=true;
+    bool enablePitchShift=true;
+    bool enableRingMod=false;
 
 
     std::array<String, nVoiceSpaces> getVoiceSpaceNames() {
@@ -144,6 +153,7 @@ public:
         currentVoiceSpace = voiceSpaces[0].mappingFunction;
         queue_init(&controlMessageQueue, sizeof(controlMessages), 1);
         queue_init(&wetdryQueue, sizeof(float), 1);
+        queue_init(&bpmQueue, sizeof(float), 1);
         // queue_init(&sequencerControlQueue, sizeof(int), 1);
     };
 
@@ -218,8 +228,9 @@ public:
 
         // pitch shift
         float pitchshifted = pitchshifter_.Process(mix);
-        // // Mix the original signal with the pitch-shifted signal
-        pitchshifted = (mix * (1.f - pitchshifter_mix_)) + (pitchshifted * pitchshifter_mix_);
+        pitchshifted = enablePitchShift
+            ? (mix * (1.f - pitchshifter_mix_)) + (pitchshifted * pitchshifter_mix_)
+            : mix;
 
 
         /////////////////// FILTERBANK
@@ -295,9 +306,7 @@ public:
         // Mix dry
         y = (y * sqrtf(wetdry_mix_)) + (mix * 1.5f * sqrtf(1.f - wetdry_mix_));
 
-        // Mix v0 synth into reverb output
-        y += v0out * synthMixLevel;
-
+        y = enableRingMod ? (v0out * y) : (y + (v0out * synthMixLevel));
 
         stereosample_t ret { y, y };
         return ret;
@@ -308,6 +317,7 @@ public:
         AudioAppBase<NPARAMS>::Setup(sample_rate, interface);
         maxiSettings::sampleRate = sample_rate;
         sampleRatef = sample_rate;
+        smoother.Setup(150.f, sample_rate);
         pitchshifter_.Init(sample_rate);
 
         paf0.init(); paf0.setsr(sample_rate, 1);
@@ -318,7 +328,7 @@ public:
         v0PitchEnv.setup(10.f, 500.f, 0.f, 100.f, sample_rate);
 
         seqEngine.setup(sample_rate);
-        seqEngine.updateBPM(120.f);
+        seqEngine.updateBPM(107.f);
         seqEngine.setPlaying(true);
 
         seqEngine.onNoteOn = [this](size_t seqIdx, int velocity) {
@@ -366,11 +376,21 @@ public:
                 case controlMessages::MSG_ENABLE_DELAY_TO_REVERB:
                     enableDelayToReverb = !enableDelayToReverb;
                     break;
+                case controlMessages::MSG_ENABLE_PITCHSHIFT:
+                    enablePitchShift = !enablePitchShift;
+                    break;
+                case controlMessages::MSG_ENABLE_RINGMOD:
+                    enableRingMod = !enableRingMod;
+                    break;
             }
         }
         {
             float v;
             if (queue_try_remove(&wetdryQueue, &v)) wetdryKnobValue = v;
+        }
+        {
+            float bpm;
+            if (queue_try_remove(&bpmQueue, &bpm)) seqEngine.updateBPM(bpm);
         }
         if (wetdryKnobValue >= 0.f) {
             wetdry_mix_ = wetdryKnobValue;
@@ -388,24 +408,24 @@ protected:
     std::array<float,NPARAMS> neuralNetOutputs{0}, smoothParams{0};
 
     // https://ccrma.stanford.edu/~jos/pasp/Freeverb.html
-    static constexpr size_t SIZE_allp0=244;
-    static constexpr size_t SIZE_allp1=605;
-    static constexpr size_t SIZE_allp2=479;
-    static constexpr size_t SIZE_allp3=371;
+    static constexpr size_t SIZE_allp0=177;
+    static constexpr size_t SIZE_allp1=439;
+    static constexpr size_t SIZE_allp2=348;
+    static constexpr size_t SIZE_allp3=269;
 
     maxiReverbFilters<SIZE_allp0> allp0;
     maxiReverbFilters<SIZE_allp1> allp1;
     maxiReverbFilters<SIZE_allp2> allp2;
     maxiReverbFilters<SIZE_allp3> allp3;
 
-    static constexpr size_t SIZE_comb0=1694;
-    static constexpr size_t SIZE_comb1=1759;
-    static constexpr size_t SIZE_comb2=1622;
-    static constexpr size_t SIZE_comb3=1547;
-    static constexpr size_t SIZE_comb4=1379;
-    static constexpr size_t SIZE_comb5=1464;
-    static constexpr size_t SIZE_comb6=1283;
-    static constexpr size_t SIZE_comb7=1205;
+    static constexpr size_t SIZE_comb0=1229;
+    static constexpr size_t SIZE_comb1=1276;
+    static constexpr size_t SIZE_comb2=1177;
+    static constexpr size_t SIZE_comb3=1122;
+    static constexpr size_t SIZE_comb4=1001;
+    static constexpr size_t SIZE_comb5=1062;
+    static constexpr size_t SIZE_comb6=931;
+    static constexpr size_t SIZE_comb7=874;
 
     maxiReverbFilters<SIZE_comb0> lpcomb0;
     maxiReverbFilters<SIZE_comb1> lpcomb1;
@@ -454,9 +474,9 @@ protected:
     float verbVsDelayLevel{0}, delayToVerbLevel{0}, filterBankDelayXFade{0};
     float delayMorph{0.5f}, delayBlend{0.f};
 
-    OnePoleSmoother<kN_Params> smoother{150.f, kSampleRate};
+    OnePoleSmoother<kN_Params> smoother;
 
-    daisysp::PitchShifter pitchshifter_;
+    daisysp::PitchShifter<1600> pitchshifter_;
     float pitchshifter_mix_{0.5f};
 
     // v0 PAF voice (from MEMLCelium)

@@ -237,6 +237,7 @@ public:
     {
         AudioAppBase<NPARAMS>::Setup(sample_rate, interface);
         maxiSettings::sampleRate = sample_rate;
+        smoother.Setup(150.f, sample_rate);
     }
 
     __attribute__((always_inline)) void ProcessParams(const std::array<float, NPARAMS>& params)
@@ -346,7 +347,7 @@ protected:
     float verbVsDelayLevel{0}, delayToVerbLevel{0}, filterBankDelayXFade{0};
     float delayMorph{0.5f}, delayBlend{0.f};
 
-    OnePoleSmoother<kN_Params> smoother{150.f, kSampleRate};
+    OnePoleSmoother<kN_Params> smoother;
     
     // maxiDynamicsLite limiter;
 

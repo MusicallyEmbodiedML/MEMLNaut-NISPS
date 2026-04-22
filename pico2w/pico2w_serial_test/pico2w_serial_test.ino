@@ -26,30 +26,30 @@ static constexpr uint8_t SLIP_ESC_ESC = 0xDD;
 // Send a single byte with SLIP escaping
 static void slip_write_byte(uint8_t b) {
     if (b == SLIP_END) {
-        Serial1.write(SLIP_ESC);
-        Serial1.write(SLIP_ESC_END);
+        Serial2.write(SLIP_ESC);
+        Serial2.write(SLIP_ESC_END);
     } else if (b == SLIP_ESC) {
-        Serial1.write(SLIP_ESC);
-        Serial1.write(SLIP_ESC_ESC);
+        Serial2.write(SLIP_ESC);
+        Serial2.write(SLIP_ESC_ESC);
     } else {
-        Serial1.write(b);
+        Serial2.write(b);
     }
 }
 
 // Encode and send an array of floats as a SLIP packet
 static void slip_send(const float* data, size_t n) {
-    Serial1.write(SLIP_END);                    // packet start
+    Serial2.write(SLIP_END);                    // packet start
     const uint8_t* raw = reinterpret_cast<const uint8_t*>(data);
     for (size_t i = 0; i < n * sizeof(float); i++) {
         slip_write_byte(raw[i]);
     }
-    Serial1.write(SLIP_END);                    // packet end
+    Serial2.write(SLIP_END);                    // packet end
 }
 
 void setup() {
-    Serial1.setTX(0);   // GP0
-    Serial1.setRX(1);   // GP1
-    Serial1.begin(BAUD_RATE);
+    Serial2.setTX(4);   // GP0
+    Serial2.setRX(5);   // GP1
+    Serial2.begin(BAUD_RATE);
     Serial.begin();
 }
 
