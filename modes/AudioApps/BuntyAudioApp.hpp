@@ -36,7 +36,7 @@
 static constexpr size_t kBuntyNSequences = 1;
 static constexpr size_t kBuntySeqParams  = kBuntyNSequences * 7; // 7 params per sequence
 static constexpr size_t kBuntySynthParams = 47;
-static constexpr size_t kBuntyV0Params   = 18; // 1 baseFreq + 3 cf + 3 bw + 1 vib + 1 vfr + 3 shift + 4 ampEnv + 2 pitchEnv + 1 pitchEmph + 1 synthMix
+static constexpr size_t kBuntyV0Params   = 10; // baseFreq + cf + bw + ampEnv(A/D/S/R) + pitchEnv(D) + pitchEmph + synthMix
 
 template<size_t NPARAMS=kBuntySynthParams + kBuntySeqParams + kBuntyV0Params>
 // template<size_t NPARAMS=kBuntySynthParams>
@@ -167,24 +167,20 @@ public:
         {
             size_t i = kBuntySynthParams + kBuntySeqParams;
             auto sqp = [&]() { float p = smoothParams[i++]; return p * p; };
-            baseFreq   = 60.f  + smoothParams[i++] * 10.f;
-            paf0_cf    = smoothParams[i++] * 2.f;
-            paf1_cf    = smoothParams[i++] * 2.f;
-            paf2_cf    = smoothParams[i++] * 2.f;
-            paf0_bw    = 10.f  + smoothParams[i++] * 100.f;
-            paf1_bw    = 10.f  + smoothParams[i++] * 100.f;
-            paf2_bw    = 10.f  + smoothParams[i++] * 100.f;
-            paf0_vib   = 0;  paf1_vib = paf0_vib;  paf2_vib = paf0_vib;
-            paf0_vfr   = 0;   paf1_vfr = paf0_vfr;  paf2_vfr = paf0_vfr;
-            paf0_shift = -100.f + smoothParams[i++] * 200.f;
-            paf1_shift = -100.f + smoothParams[i++] * 200.f;
-            paf2_shift = -100.f + smoothParams[i++] * 200.f;
+            baseFreq  = 60.f + smoothParams[i++] * 10.f;
+            paf0_cf   = smoothParams[i++] * 2.f;
+            paf1_cf   = paf2_cf = paf0_cf;
+            paf0_bw   = 10.f + smoothParams[i++] * 100.f;
+            paf1_bw   = paf2_bw = paf0_bw;
+            paf0_shift = paf1_shift = paf2_shift = 0.f;
+            paf0_vib  = paf1_vib = paf2_vib = 0.f;
+            paf0_vfr  = paf1_vfr = paf2_vfr = 0.f;
             v0AmpEnv.setup(0.01f + smoothParams[i++] * 1.f,
                            0.5f  + sqp() * 200.f,
                            0.01f + smoothParams[i++] * 0.5f,
                            1.f   + sqp() * 800.f, sampleRatef);
-            v0PitchEnv.setup(0.01f + smoothParams[i++] * 3.f,
-                             0.5f  + sqp() * 100.f,
+            v0PitchEnv.setup(0.01f,
+                             0.5f + sqp() * 30.f,
                              0.f, 0.1f, sampleRatef);
             v0PitchEmph   = smoothParams[i++] * 50.f;
             synthMixLevel = smoothParams[i++];
