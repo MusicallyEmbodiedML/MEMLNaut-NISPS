@@ -126,7 +126,9 @@ void setup() {
   MEMLNaut::Initialize();
   pinMode(33, OUTPUT);
 
+  Serial.println("DBG: calling setupInterface");
   currentMode->setupInterface();
+  Serial.println("DBG: setupInterface done");
 
   // Setup interface with memory barrier protection
   WRITE_VOLATILE(interface_ready, true);
@@ -139,8 +141,9 @@ void setup() {
     delay(1);
   }
 
-
+  Serial.println("DBG: calling addViews");
   currentMode->addViews();
+  Serial.println("DBG: addViews done");
 
   auto helpView = std::make_shared<MessageView>("Help");
   String title = currentMode->getHelpTitle();
@@ -154,11 +157,13 @@ void setup() {
   helpView->post("Z: Exploration noise");
   helpView->post("Joystick: Explore / SW: Drag sound");
 
+  Serial.println("DBG: creating infoSection");
   auto sysView = std::make_shared<SystemView>("System Info");
   auto infoSection = std::make_shared<SectionView>("Info");
   infoSection->addChild(helpView);
   infoSection->addChild(sysView);
   MEMLNaut::Instance()->disp->AddView(infoSection);
+  Serial.println("DBG: infoSection added");
 
   Serial.println("Finished initialising core 0.");
 }
