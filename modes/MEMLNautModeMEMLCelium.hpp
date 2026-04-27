@@ -3,6 +3,7 @@
 #include "../src/memllib/interface/MIDIInOut.hpp"
 #include "../src/memllib/hardware/memlnaut/display/XYPadView.hpp"
 #include "../src/memllib/hardware/memlnaut/display/BlockSelectView.hpp"
+#include "../src/memllib/hardware/memlnaut/display/SectionView.hpp"
 #include "../src/memllib/hardware/memlnaut/MEMLNaut.hpp"
 #include "AudioApps/MEMLCeliumAudioApp.hpp"
 #include "../src/memllib/examples/InterfaceRL.hpp"
@@ -88,35 +89,30 @@ public:
     }
 
     void addViews() {
-        // Focus screen — select which parameter groups are live
+        auto synthSection = std::make_shared<SectionView>("Synth");
+
+        auto voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
+        voiceSpaceSelectView->setOptions(voiceSpaceList);
+        voiceSpaceSelectView->setNewVoiceCallback([this](size_t idx) {
+            audioAppMEMLCelium.setVoiceSpace(idx);
+        });
+        synthSection->addChild(voiceSpaceSelectView);
+
         auto focusView = std::make_shared<BlockSelectView>(
             "Focus", TFT_CYAN, 2, 120, 70, TFT_BLACK,
             std::vector<String>{"Seq", "Synth"}, TFT_DARKGREY, 2);
-
         focusView->SetOnSelectCallback([this, focusView](size_t id) {
             size_t groupIdx = id - 1;
             uint32_t newMask = focusManager.getSelectedMask() ^ (1u << groupIdx);
             focusManager.setFocus(newMask, interface.getLastAction());
             focusView->toggleAlt(groupIdx);
         });
-        MEMLNaut::Instance()->disp->InsertViewAfter(interface.rlStatsView, focusView);
+        synthSection->addChild(focusView);
 
-        std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
-        voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
-
-        MEMLNaut::Instance()->disp->InsertViewAfter(interface.rlStatsView, voiceSpaceSelectView);
-        voiceSpaceSelectView->setOptions(voiceSpaceList);
-        voiceSpaceSelectView->setNewVoiceCallback(
-            [this](size_t idx) {
-                audioAppMEMLCelium.setVoiceSpace(idx);
-            });
-
-      std::shared_ptr<XYPadView> noteTrigView = std::make_shared<XYPadView>("Play", TFT_SILVER);
-
-      static bool is_playing_note = false;
-      static uint8_t last_note_number = 0;
-
-      noteTrigView->SetOnTouchCallback([this](float x, float y) {
+        auto noteTrigView = std::make_shared<XYPadView>("Play", TFT_SILVER);
+        static bool is_playing_note = false;
+        static uint8_t last_note_number = 0;
+        noteTrigView->SetOnTouchCallback([this](float x, float y) {
             if (is_playing_note) {
                 midi_interf->sendNoteOff(last_note_number, 0);
                 is_playing_note = false;
@@ -127,14 +123,16 @@ public:
             midi_interf->sendNoteOn(midimsg[0], midimsg[1]);
             last_note_number = midimsg[0];
             is_playing_note = true;
-      });
-      noteTrigView->SetOnTouchReleaseCallback([this](float x, float y) {
-            uint8_t midimsg[2] = {last_note_number,0};
+        });
+        noteTrigView->SetOnTouchReleaseCallback([this](float x, float y) {
+            uint8_t midimsg[2] = {last_note_number, 0};
             queue_try_add(&audioAppMEMLCelium.qMIDINoteOff, &midimsg);
             midi_interf->sendNoteOff(last_note_number, 0);
             is_playing_note = false;
-      });
-      MEMLNaut::Instance()->disp->AddView(noteTrigView);
+        });
+        synthSection->addChild(noteTrigView);
+
+        MEMLNaut::Instance()->disp->AddView(synthSection);
     };
 
     inline void processAnalysisParams() {}

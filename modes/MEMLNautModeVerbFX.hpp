@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../src/memllib/hardware/memlnaut/display/SectionView.hpp"
 #include "../src/memllib/interface/MIDIInOut.hpp"
 #include "./AudioApps/VerbFXAudioApp.hpp"
 #include "MEMLNautMode.hpp"
@@ -54,6 +55,8 @@ public:
     }
 
     void addViews() {
+        auto synthSection = std::make_shared<SectionView>("Synth");
+
         enableView = std::make_shared<BlockSelectView>("FX Enable", TFT_YELLOW, 6, 80, 70, TFT_BLACK,
             std::vector<String>{ "FilterBnk", "Reverb", "ShortDly", "MedDly", "LongDly", "Dly->Verb" },
             TFT_BLUE, 2);
@@ -69,16 +72,16 @@ public:
                 case 6: { auto msg = VerbFXAudioApp<>::controlMessages::MSG_ENABLE_DELAY_TO_REVERB; queue_try_add(&q, &msg); } break;
             }
         });
-        MEMLNaut::Instance()->disp->AddView(enableView);
+        synthSection->addChild(enableView);
 
-        std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
-        voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
-        MEMLNaut::Instance()->disp->InsertViewAfter(interface.rlStatsView, voiceSpaceSelectView);
+        auto voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
         voiceSpaceSelectView->setOptions(voiceSpaceList);
-        voiceSpaceSelectView->setNewVoiceCallback(
-            [this](size_t idx) {
-                audioAppVerbFX.setVoiceSpace(idx);
-            });
+        voiceSpaceSelectView->setNewVoiceCallback([this](size_t idx) {
+            audioAppVerbFX.setVoiceSpace(idx);
+        });
+        synthSection->addChild(voiceSpaceSelectView);
+
+        MEMLNaut::Instance()->disp->AddView(synthSection);
     };
 
     void setupAudio(float sample_rate) {

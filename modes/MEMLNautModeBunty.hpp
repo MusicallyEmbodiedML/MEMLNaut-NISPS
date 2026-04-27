@@ -3,6 +3,7 @@
 #include "../src/memllib/interface/MIDIInOut.hpp"
 #include "./AudioApps/BuntyAudioApp.hpp"
 #include "./AudioApps/BuntySequencingView.hpp"
+#include "../src/memllib/hardware/memlnaut/display/SectionView.hpp"
 #include "MEMLNautMode.hpp"
 #include <memory>
 #include <array>
@@ -60,11 +61,13 @@ public:
     }
 
     void addViews() {
+        auto synthSection = std::make_shared<SectionView>("Synth");
+
         sequencingView_ = std::make_shared<BuntySequencingView>("Sequencing");
         sequencingView_->setBPMCallback([this](int bpm) {
             audioAppBunty.setBPMQueued((float)bpm);
         });
-        MEMLNaut::Instance()->disp->AddView(sequencingView_);
+        synthSection->addChild(sequencingView_);
 
         enableView = std::make_shared<BlockSelectView>("FX Enable", TFT_YELLOW, 8, 60, 60, TFT_BLACK,
             std::vector<String>{ "FiltBnk", "Reverb", "ShortDly", "MedDly", "LongDly", "Dly>Verb", "PitchSft", "RingMod" },
@@ -83,16 +86,16 @@ public:
                 case 8: { auto msg = BuntyAudioApp<>::controlMessages::MSG_ENABLE_RINGMOD;       queue_try_add(&q, &msg); } break;
             }
         });
-        MEMLNaut::Instance()->disp->AddView(enableView);
+        synthSection->addChild(enableView);
 
-        std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
-        voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
-        MEMLNaut::Instance()->disp->InsertViewAfter(interface.rlStatsView, voiceSpaceSelectView);
+        auto voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
         voiceSpaceSelectView->setOptions(voiceSpaceList);
-        voiceSpaceSelectView->setNewVoiceCallback(
-            [this](size_t idx) {
-                audioAppBunty.setVoiceSpace(idx);
-            });
+        voiceSpaceSelectView->setNewVoiceCallback([this](size_t idx) {
+            audioAppBunty.setVoiceSpace(idx);
+        });
+        synthSection->addChild(voiceSpaceSelectView);
+
+        MEMLNaut::Instance()->disp->AddView(synthSection);
     };
 
     void setupAudio(float sample_rate) {

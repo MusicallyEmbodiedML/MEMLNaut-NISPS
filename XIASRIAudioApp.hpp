@@ -223,7 +223,7 @@ protected:
 
     maxiDCBlocker dcb;
 
-    daisysp::PitchShifter pitchshifter_;
+    daisysp::PitchShifter<> pitchshifter_;
     float pitchshifter_mix_{0.5f};
     float wetdry_mix_{0.5f};
 

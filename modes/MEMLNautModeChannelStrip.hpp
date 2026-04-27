@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../src/memllib/hardware/memlnaut/display/SectionView.hpp"
 #include "../src/memllib/interface/MIDIInOut.hpp"
 #include "../ChannelStripAudioApp.hpp"
 #include "../src/memllib/examples/InterfaceRL.hpp"
@@ -37,6 +38,8 @@ public:
     }
 
     void addViews() {
+        auto synthSection = std::make_shared<SectionView>("Synth");
+
         bypassView = std::make_shared<BlockSelectView>("Bypasses", TFT_YELLOW, 5, 80, 70, TFT_BLACK,
         std::vector<String>{ "All", "EQ", "Comp", "PPG", "InFilt" });
         bypassView->SetOnSelectCallback([this] (size_t id) {
@@ -44,50 +47,23 @@ public:
             bypassView->toggleAlt(id-1);
             queue_t& audioAppQ = audioAppChannelStrip.controlMessageQueue;
             switch(id) {
-                case 1:
-                    {
-                        auto msg = ChannelStripAudioApp<>::controlMessages::MSG_BYPASS_ALL;
-                        queue_try_add(&audioAppQ, &msg);
-                    }                    
-                    break;
-                case 2:
-                    {
-                        auto msg = ChannelStripAudioApp<>::controlMessages::MSG_BYPASS_EQ;
-                        queue_try_add(&audioAppQ, &msg);
-                    }
-                    break;
-                case 3:
-                    {
-                        auto msg = ChannelStripAudioApp<>::controlMessages::MSG_BYPASS_COMP;
-                        queue_try_add(&audioAppQ, &msg);
-                    }
-                    break;
-                case 4:
-                    {
-                        auto msg = ChannelStripAudioApp<>::controlMessages::MSG_BYPASS_PREPOSTGAIN;
-                        queue_try_add(&audioAppQ, &msg);
-                    }
-                    break;
-                case 5:
-                    {
-                        auto msg = ChannelStripAudioApp<>::controlMessages::MSG_BYPASS_INFILTERS;
-                        queue_try_add(&audioAppQ, &msg);
-                    }
-                    break;
+                case 1: { auto msg = ChannelStripAudioApp<>::controlMessages::MSG_BYPASS_ALL;         queue_try_add(&audioAppQ, &msg); } break;
+                case 2: { auto msg = ChannelStripAudioApp<>::controlMessages::MSG_BYPASS_EQ;          queue_try_add(&audioAppQ, &msg); } break;
+                case 3: { auto msg = ChannelStripAudioApp<>::controlMessages::MSG_BYPASS_COMP;        queue_try_add(&audioAppQ, &msg); } break;
+                case 4: { auto msg = ChannelStripAudioApp<>::controlMessages::MSG_BYPASS_PREPOSTGAIN; queue_try_add(&audioAppQ, &msg); } break;
+                case 5: { auto msg = ChannelStripAudioApp<>::controlMessages::MSG_BYPASS_INFILTERS;   queue_try_add(&audioAppQ, &msg); } break;
             }
         });
-        MEMLNaut::Instance()->disp->AddView(bypassView);
+        synthSection->addChild(bypassView);
 
-        std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
-        voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
+        auto voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
+        voiceSpaceSelectView->setOptions(voiceSpaceList);
+        voiceSpaceSelectView->setNewVoiceCallback([this](size_t idx) {
+            audioAppChannelStrip.setVoiceSpace(idx);
+        });
+        synthSection->addChild(voiceSpaceSelectView);
 
-        MEMLNaut::Instance()->disp->InsertViewAfter(interface.rlStatsView, voiceSpaceSelectView);
-        voiceSpaceSelectView->setOptions(voiceSpaceList);  //set by core 1 on startup
-        voiceSpaceSelectView->setNewVoiceCallback(
-            [this](size_t idx) {
-                audioAppChannelStrip.setVoiceSpace(idx);
-            });
-
+        MEMLNaut::Instance()->disp->AddView(synthSection);
     };
 
     void setupAudio(float sample_rate) {
