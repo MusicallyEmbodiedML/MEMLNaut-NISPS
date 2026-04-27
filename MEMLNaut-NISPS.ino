@@ -10,6 +10,9 @@
 #include "src/memllib/interface/MIDIInOut.hpp"
 #include "src/memllib/audio/AudioDriver.hpp"
 #include "src/memllib/hardware/memlnaut/MEMLNaut.hpp"
+#include "src/memllib/hardware/memlnaut/display/SectionView.hpp"
+#include "src/memllib/hardware/memlnaut/display/SystemView.hpp"
+#include "src/memllib/hardware/memlnaut/display/MessageView.hpp"
 #include "hardware/structs/bus_ctrl.h"
 #include <memory>
 
@@ -39,8 +42,8 @@
 
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeSoundAnalysisMIDI
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeXIASRI
-// #define MEMLNAUT_MODE_TYPE MEMLNautModeVerbFX
-#define MEMLNAUT_MODE_TYPE MEMLNautModeBunty
+#define MEMLNAUT_MODE_TYPE MEMLNautModeVerbFX
+// #define MEMLNAUT_MODE_TYPE MEMLNautModeBunty
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeBreakOr
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeElysiamorfs
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeChannelStrip
@@ -139,7 +142,7 @@ void setup() {
 
   currentMode->addViews();
 
-  std::shared_ptr<MessageView> helpView = std::make_shared<MessageView>("Help");
+  auto helpView = std::make_shared<MessageView>("Help");
   String title = currentMode->getHelpTitle();
   helpView->post(title);
   helpView->post("TA: Down: Clear replay memory");
@@ -150,9 +153,12 @@ void setup() {
   helpView->post("Y: Reward Scale");
   helpView->post("Z: Exploration noise");
   helpView->post("Joystick: Explore / SW: Drag sound");
-  MEMLNaut::Instance()->disp->AddView(helpView);
 
-  MEMLNaut::Instance()->addSystemInfoView();
+  auto sysView = std::make_shared<SystemView>("System Info");
+  auto infoSection = std::make_shared<SectionView>("Info");
+  infoSection->addChild(helpView);
+  infoSection->addChild(sysView);
+  MEMLNaut::Instance()->disp->AddView(infoSection);
 
   Serial.println("Finished initialising core 0.");
 }
