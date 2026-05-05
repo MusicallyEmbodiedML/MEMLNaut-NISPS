@@ -196,7 +196,11 @@ public:
         shape = sinf(((shape * TWOPI) * sineShapeGain) + sineShapeASym);
         mix = mix + (shape * sineShapeMix);
 
+        mix = lowBoost.play(mix);
+        mix = midBoost.play(mix);    
+        mix = highBoost.play(mix);
 
+        
         mix = tanhf(mix);
 
         stereosample_t ret { mix, mix };
@@ -237,6 +241,10 @@ public:
         v0PitchEnv.setup(10,500,0.f,100,sampleRatef);
         v1AmpEnv.setup(500,500,0.8,1000,sampleRatef);
         v1PitchEnv.setup(10,500,0.f,100,sampleRatef);
+
+        lowBoost.set(maxiBiquad::PEAK, 70.f, 0.707f, 6.f);
+        midBoost.set(maxiBiquad::PEAK, 800.f, 0.707f, 6.f);
+        highBoost.set(maxiBiquad::PEAK, 5000.f, 0.707f, 6.f);
 
         seqEngine.setup(sample_rate);
         seqEngine.updateBPM(120.f);
@@ -513,6 +521,8 @@ protected:
     float fbzm1=0.f;
     size_t delayMax=10;
     float fbSmoothAlpha=0.95f;
+
+    maxiBiquad lowBoost, midBoost, highBoost;
 
 };
 
