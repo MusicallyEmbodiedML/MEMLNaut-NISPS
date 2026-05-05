@@ -100,40 +100,40 @@ public:
         });
         MEMLNaut::Instance()->disp->InsertViewAfter(interface.rlStatsView, focusView);
 
-        std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
-        voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
+    //     std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
+    //     voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
 
-        MEMLNaut::Instance()->disp->InsertViewAfter(interface.rlStatsView, voiceSpaceSelectView);
-        voiceSpaceSelectView->setOptions(voiceSpaceList);
-        voiceSpaceSelectView->setNewVoiceCallback(
-            [this](size_t idx) {
-                audioAppMEMLCelium.setVoiceSpace(idx);
-            });
+    //     MEMLNaut::Instance()->disp->InsertViewAfter(interface.rlStatsView, voiceSpaceSelectView);
+    //     voiceSpaceSelectView->setOptions(voiceSpaceList);
+    //     voiceSpaceSelectView->setNewVoiceCallback(
+    //         [this](size_t idx) {
+    //             audioAppMEMLCelium.setVoiceSpace(idx);
+    //         });
 
-      std::shared_ptr<XYPadView> noteTrigView = std::make_shared<XYPadView>("Play", TFT_SILVER);
+    //   std::shared_ptr<XYPadView> noteTrigView = std::make_shared<XYPadView>("Play", TFT_SILVER);
 
-      static bool is_playing_note = false;
-      static uint8_t last_note_number = 0;
+    //   static bool is_playing_note = false;
+    //   static uint8_t last_note_number = 0;
 
-      noteTrigView->SetOnTouchCallback([this](float x, float y) {
-            if (is_playing_note) {
-                midi_interf->sendNoteOff(last_note_number, 0);
-                is_playing_note = false;
-            }
-            uint8_t noteVel = static_cast<uint8_t>(powf(y, 0.5f) * 127.f);
-            uint8_t midimsg[2] = {static_cast<uint8_t>(x * 127.f), noteVel};
-            queue_try_add(&audioAppMEMLCelium.qMIDINoteOn, &midimsg);
-            midi_interf->sendNoteOn(midimsg[0], midimsg[1]);
-            last_note_number = midimsg[0];
-            is_playing_note = true;
-      });
-      noteTrigView->SetOnTouchReleaseCallback([this](float x, float y) {
-            uint8_t midimsg[2] = {last_note_number,0};
-            queue_try_add(&audioAppMEMLCelium.qMIDINoteOff, &midimsg);
-            midi_interf->sendNoteOff(last_note_number, 0);
-            is_playing_note = false;
-      });
-      MEMLNaut::Instance()->disp->AddView(noteTrigView);
+    //   noteTrigView->SetOnTouchCallback([this](float x, float y) {
+    //         if (is_playing_note) {
+    //             midi_interf->sendNoteOff(last_note_number, 0);
+    //             is_playing_note = false;
+    //         }
+    //         uint8_t noteVel = static_cast<uint8_t>(powf(y, 0.5f) * 127.f);
+    //         uint8_t midimsg[2] = {static_cast<uint8_t>(x * 127.f), noteVel};
+    //         queue_try_add(&audioAppMEMLCelium.qMIDINoteOn, &midimsg);
+    //         midi_interf->sendNoteOn(midimsg[0], midimsg[1]);
+    //         last_note_number = midimsg[0];
+    //         is_playing_note = true;
+    //   });
+    //   noteTrigView->SetOnTouchReleaseCallback([this](float x, float y) {
+    //         uint8_t midimsg[2] = {last_note_number,0};
+    //         queue_try_add(&audioAppMEMLCelium.qMIDINoteOff, &midimsg);
+    //         midi_interf->sendNoteOff(last_note_number, 0);
+    //         is_playing_note = false;
+    //   });
+    //   MEMLNaut::Instance()->disp->AddView(noteTrigView);
     };
 
     inline void processAnalysisParams() {}
