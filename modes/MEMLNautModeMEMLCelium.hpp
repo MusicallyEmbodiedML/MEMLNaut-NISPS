@@ -108,7 +108,7 @@ public:
         updateActiveDims();
 
         // Focus screen — select which parameter groups are live
-        auto focusView = std::make_shared<BlockSelectView>(
+        std::shared_ptr<BlockSelectView> focusView = std::make_shared<BlockSelectView>(
             "Focus", TFT_DARKGREY, 6, 80, 70, TFT_WHITE,
             std::vector<String>{"Seq", "Synth", "Env", "Voice 1", "Voice 2", "Voice 3"}, TFT_GREENYELLOW, 2);
 
@@ -121,15 +121,16 @@ public:
         });
         MEMLNaut::Instance()->disp->InsertViewAfter(interface.nnOutputsGraphView, focusView);
 
-    //     std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
-    //     voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
+        std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
+        voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
 
-    //     MEMLNaut::Instance()->disp->InsertViewAfter(interface.rlStatsView, voiceSpaceSelectView);
-    //     voiceSpaceSelectView->setOptions(voiceSpaceList);
-    //     voiceSpaceSelectView->setNewVoiceCallback(
-    //         [this](size_t idx) {
-    //             audioAppMEMLCelium.setVoiceSpace(idx);
-    //         });
+        MEMLNaut::Instance()->disp->InsertViewAfter(focusView, voiceSpaceSelectView);
+        size_t nVS = audioAppMEMLCelium.getPopulatedVoiceSpaceCount();
+        voiceSpaceSelectView->setOptions(std::span<String>(voiceSpaceList.data(), nVS));
+        voiceSpaceSelectView->setNewVoiceCallback(
+            [this](size_t idx) {
+                audioAppMEMLCelium.setVoiceSpace(idx);
+            });
 
     //   std::shared_ptr<XYPadView> noteTrigView = std::make_shared<XYPadView>("Play", TFT_SILVER);
 

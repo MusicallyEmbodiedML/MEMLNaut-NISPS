@@ -125,9 +125,14 @@ public:
             }
 
             if (seqEngine.tick()) {
+                int ccIndex=0;
+                // static int ccNumbers[8] = {1,2,3,4,5,9,11,12};
+                static int ccNumbers[8] = {1,2,3,4,5,9,11,12};
                 // Trigger outputs (S1–S4)
                 for (size_t i = 0; i < kNRatioSeqs; i++) {
-                    i2cValues[i] = seqEngine.states[i].lastTrig ? 1.f : 0.f;
+                    const float trigVal = seqEngine.states[i].lastTrig ? 1.f : 0.f;
+                    i2cValues[i] = trigVal;
+                    midiIO->queueCC(ccNumbers[ccIndex++], static_cast<uint8_t>(trigVal * 127.f));
                 }
                 // Continuous FM outputs (S5–S8)
                 float bp = seqEngine.getBarPhasor();
@@ -137,7 +142,9 @@ public:
                     if (p < 0.f) p += 1.f;
                     float v = fmPair(p, s.carrierFreq, s.modFreq, s.modIndex, s.fbLevel,
                                      s.carrier, s.modulator);
-                    i2cValues[kNRatioSeqs + i] = (v + 1.f) * 0.5f;
+                    const float fmVal = (v + 1.f) * 0.5f;
+                    i2cValues[kNRatioSeqs + i] = fmVal;
+                    midiIO->queueCC(ccNumbers[ccIndex++], static_cast<uint8_t>(fmVal * 127.f));
                 }
                 midiIO->flushQueue();
                 queue_try_add(&i2cOutQueue, &i2cValues);

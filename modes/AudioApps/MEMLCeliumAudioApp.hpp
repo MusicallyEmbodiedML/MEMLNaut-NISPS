@@ -105,51 +105,20 @@ public:
     }
 
     void setVoiceSpace(size_t i) {
-        if (i < voiceSpaces.size()) {
+        if (i < voiceSpaces.size() && voiceSpaces[i].mappingFunction) {
             currentVoiceSpace = voiceSpaces[i].mappingFunction;
         }
     }
 
+    size_t getPopulatedVoiceSpaceCount() const {
+        size_t count = 0;
+        for (const auto& vs : voiceSpaces) {
+            if (vs.mappingFunction) count++;
+        }
+        return count;
+    }
+
     MEMLCeliumAudioApp() : AudioAppBase<NPARAMS>() {
-        // auto voiceSpace1 = [this](const std::array<float, NPARAMS>& params) {
-        //     VOICE_SPACE_1_BODY
-        // };
-
-        // auto voiceSpace2 = [this](const std::array<float, NPARAMS>& params) {
-        //     VOICE_SPACE_2_BODY
-        // };
-
-        // auto voiceSpacePerc = [this](const std::array<float, NPARAMS>& params) {
-        //     VOICE_SPACE_PERC_BODY
-        // };
-
-        // auto voiceSpaceSingle1 = [this](const std::array<float, NPARAMS>& params) {
-        //     VOICE_SPACE_SINGLE_1_BODY
-        // };
-
-        // auto voiceSpaceQuadDetune = [this](const std::array<float, NPARAMS>& params) {
-        //     VOICE_SPACE_QUAD_DETUNE_BODY
-        // };
-
-        // auto voiceSpaceQuadOct = [this](const std::array<float, NPARAMS>& params) {
-        //     VOICE_SPACE_QUAD_OCT_BODY
-        // };
-
-        // auto voiceSpaceQuadDist = [this](const std::array<float, NPARAMS>& params) {
-        //     VOICE_SPACE_QUAD_DIST_BODY
-        // };
-
-
-        // voiceSpaces[0] = {"Ellipticacacia", voiceSpaceQuadDetune};
-        // voiceSpaces[1] = {"Rowantares", voiceSpace1};
-        // voiceSpaces[2] = {"Neemeda", voiceSpace2};
-        // voiceSpaces[3] = {"Aquillow", voiceSpacePerc};
-        // voiceSpaces[4] = {"Magnetarch", voiceSpaceSingle1};
-        // voiceSpaces[5] = {"Elderstar", voiceSpaceQuadOct};
-        // voiceSpaces[6] = {"Ipeleiades", voiceSpaceQuadDist};
-
-        // currentVoiceSpace = voiceSpaces[0].mappingFunction;
-
         queue_init(&sequencerControlQueue, sizeof(int), 1);
         queue_init(&bpmControlQueue, sizeof(float), 1);
         queue_init(&qMIDINoteOn, sizeof(uint8_t)*2, 1);
@@ -361,6 +330,115 @@ public:
                     break;
             }
         };
+
+        voiceSpaces[0] = {"Default", [this](const std::array<float, NPARAMS>& params) {
+            seqEngine.updateParams(params, 0);
+
+            size_t paramIdx = 21;
+            auto sqParam = [&]() { const float p = params[paramIdx++]; return p * p; };
+
+            baseFreq = 60.f + (params[paramIdx++] * 10.f);
+
+            paf0_cf = (params[paramIdx++]  * 2.f);
+            paf1_cf = (params[paramIdx++]  * 2.f);
+            paf2_cf = (params[paramIdx++] * 2.f);
+
+            paf0_bw = 10.f + (params[paramIdx++] * 100.f);
+            paf1_bw = 10.f + (params[paramIdx++] * 100.f);
+            paf2_bw = 10.f + (params[paramIdx++] * 100.f);
+
+            paf0_vib = sqParam() * 0.01f;
+            paf1_vib = paf0_vib;
+            paf2_vib = paf0_vib;
+
+            paf0_vfr = sqParam() * 15.0f;
+            paf1_vfr = paf0_vfr;
+            paf2_vfr = paf0_vfr;
+
+            paf0_shift =  -100.f + (params[paramIdx++] * 200.f);
+            paf1_shift = -100.f + (params[paramIdx++] * 200.f);
+            paf2_shift = -100.f + (params[paramIdx++] * 200.f);
+
+            v0AmpEnv.setup(0.01f + (params[paramIdx++] * 1.f),
+                0.5f + sqParam() * 200.f,
+                0.01 + (params[paramIdx++] * 0.5f), 1.f + sqParam() * 800.f, sampleRatef);
+
+            v0PitchEnv.setup(0.01f + (params[paramIdx++] * 3.f),
+                0.5f + sqParam() * 100.f,
+                0.f, 0.1f, sampleRatef);
+
+            v0PitchEmph = params[paramIdx++] * 50.f;
+
+            sineShapeGain = params[paramIdx++];
+            sineShapeASym = params[paramIdx++] * 0.5f;
+            sineShapeMix = params[paramIdx++];
+
+            rmGain = params[paramIdx++];
+            feedbackGain = 0.f;
+            fbSmoothAlpha = 0.5f;
+
+            v1p0Gain = 1.f;
+            v1p1Gain = 1.f;
+            v1p2Gain = 1.f;
+
+            v1BaseFreq = 300.f + (params[paramIdx++] * 10.f);
+            v1Detune1 = 1.0f + (params[paramIdx++] * 1.0f);
+            v1Detune2 = 1.0f + (params[paramIdx++] * 1.0f);
+
+            v1paf0_cf = (params[paramIdx++] * 2.f);
+            v1paf1_cf = (params[paramIdx++] * 2.f);
+            v1paf2_cf = (params[paramIdx++] * 2.f);
+
+            v1paf0_bw = 10.f + (params[paramIdx++] * 400.f);
+            v1paf1_bw = 10.f + (params[paramIdx++] * 600.f);
+            v1paf2_bw = 10.f + (params[paramIdx++] * 500.f);
+
+            v1paf0_shift = -500.f + (params[paramIdx++] * 1000.f);
+            v1paf1_shift = -300.f + (params[paramIdx++] * 600.f);
+            v1paf2_shift = -100.f + (params[paramIdx++] * 200.f);
+
+            v1AmpEnv.setup(0.01f + (params[paramIdx++] * 1.f),
+                0.5f + sqParam() * 100.f,
+                0.01 + (params[paramIdx++] * 0.3f), 1.f + sqParam() * 200.f, sampleRatef);
+
+            v1PitchEnv.setup(0.01f + (params[paramIdx++] * 3.f),
+                0.5f + sqParam() * 100.f,
+                0.f, 0.1f, sampleRatef);
+
+            v1PitchEmph = params[paramIdx++] * 10.f;
+
+            v2p0Gain = 1.f;
+            v2p1Gain = 1.f;
+            v2p2Gain = 1.f;
+
+            v2BaseFreq = 1000.f + (params[paramIdx++] * 7000.f);
+            v2Detune1 = 1.0f + (params[paramIdx++] * 3.0f);
+            v2Detune2 = 1.0f + (params[paramIdx++] * 3.0f);
+
+            v2paf0_cf = params[paramIdx++] * 3.f;
+            v2paf1_cf = params[paramIdx++] * 3.f;
+            v2paf2_cf = params[paramIdx++] * 3.f;
+
+            v2paf0_bw = 100.f + (params[paramIdx++] * 900.f);
+            v2paf1_bw = 100.f + (params[paramIdx++] * 900.f);
+            v2paf2_bw = 100.f + (params[paramIdx++] * 900.f);
+
+            v2paf0_shift = -200.f + (params[paramIdx++] * 400.f);
+            v2paf1_shift = -200.f + (params[paramIdx++] * 400.f);
+            v2paf2_shift = -200.f + (params[paramIdx++] * 400.f);
+
+            v2AmpEnv.setup(0.01f + (params[paramIdx++] * 0.1f),
+                0.5f + sqParam() * 50.f,
+                params[paramIdx++] * 0.1f, 1.f + sqParam() * 50.f, sampleRatef);
+
+            v2PitchEnv.setup(0.01f + (params[paramIdx++] * 1.f),
+                0.5f + sqParam() * 30.f,
+                0.f, 0.1f, sampleRatef);
+
+            v2PitchEmph = params[paramIdx++] * 5.f;
+            v2rmGain = params[paramIdx++];
+        }};
+        currentVoiceSpace = voiceSpaces[0].mappingFunction;
     }
 
     inline float mtof(uint8_t note) {
@@ -383,129 +461,15 @@ public:
         if (queue_try_remove(&sequencerControlQueue, &seqControl)) {
             seqEngine.setPlaying(seqControl == 1);
         }
-        seqEngine.updateParams(params, 0);
-        p0Gain=1.f; 
-        p1Gain=1.f; 
-        p2Gain=1.f; 
-        p3Gain=1.f; 
-        
-        detune1 = 1.01f; 
-        detune2 = 1.02f; 
-        // detune3 = 1.2f; 
+        p0Gain=1.f;
+        p1Gain=1.f;
+        p2Gain=1.f;
+        p3Gain=1.f;
 
-        size_t paramIdx = 21;  // 0-20 reserved for seqEngine (3 sequencers × 7 params)
-        auto sqParam = [&]() { const float p = params[paramIdx++]; return p * p; };
+        detune1 = 1.01f;
+        detune2 = 1.02f;
 
-        baseFreq = 60.f + (params[paramIdx++] * 10.f);
-        
-        paf0_cf = (params[paramIdx++]  * 2.f); 
-        paf1_cf = (params[paramIdx++]  * 2.f); 
-        paf2_cf = (params[paramIdx++] * 2.f); 
-        // paf3_cf = (params[paramIdx++] * 2.f); 
-        
-        paf0_bw = 10.f + (params[paramIdx++] * 100.f); 
-        paf1_bw = 10.f + (params[paramIdx++] * 100.f); 
-        paf2_bw = 10.f + (params[paramIdx++] * 100.f); 
-        // paf3_bw = 10.f + (params[paramIdx++] * 100.f); 
-                
-        paf0_vib = sqParam() * 0.01f;
-        paf1_vib = paf0_vib; 
-        paf2_vib = paf0_vib; 
-        // paf3_vib = 0.f; 
-        
-        paf0_vfr = sqParam() * 15.0f;
-        paf1_vfr = paf0_vfr;
-        paf2_vfr = paf0_vfr; 
-        // paf3_vfr = 0.f; 
-        
-        paf0_shift =  -100.f + (params[paramIdx++] * 200.f); 
-        paf1_shift = -100.f + (params[paramIdx++] * 200.f); 
-        paf2_shift = -100.f + (params[paramIdx++] * 200.f); 
-        // paf3_shift = -300.f + (params[paramIdx++] * 300.f); 
-                
-        v0AmpEnv.setup(0.01f + (params[paramIdx++] * 1.f),
-            0.5f + sqParam() * 200.f,
-            0.01 + (params[paramIdx++] * 0.5f), 1.f + sqParam() * 800.f, sampleRatef);
-
-        v0PitchEnv.setup(0.01f + (params[paramIdx++] * 3.f),
-            0.5f + sqParam() * 100.f,
-            0.f, 0.1f, sampleRatef);
-
-        v0PitchEmph = params[paramIdx++]* 50.f;
-        
-        sineShapeGain = params[paramIdx++]; 
-        sineShapeASym = params[paramIdx++]* 0.5f; 
-        sineShapeMix = params[paramIdx++]; 
-        
-        rmGain = params[paramIdx++];
-        feedbackGain = 0; //0.1f;
-
-        fbSmoothAlpha=0.5f;
-
-        //v1
-        v1p0Gain=1.f;
-        v1p1Gain=1.f;
-        v1p2Gain=1.f;
-
-        v1BaseFreq = 300.f + (params[paramIdx++] * 10.f);
-        v1Detune1 = 1.0f + (params[paramIdx++] * 1.0f);
-        v1Detune2 = 1.0f + (params[paramIdx++] * 1.0f);
-
-        v1paf0_cf = (params[paramIdx++] * 2.f);
-        v1paf1_cf = (params[paramIdx++] * 2.f);
-        v1paf2_cf = (params[paramIdx++] * 2.f);
-
-        v1paf0_bw = 10.f + (params[paramIdx++] * 400.f);
-        v1paf1_bw = 10.f + (params[paramIdx++] * 600.f);
-        v1paf2_bw = 10.f + (params[paramIdx++] * 500.f);
-
-        v1paf0_shift = -500.f + (params[paramIdx++] * 1000.f);
-        v1paf1_shift = -300.f + (params[paramIdx++] * 600.f);
-        v1paf2_shift = -100.f + (params[paramIdx++] * 200.f);
-
-        v1AmpEnv.setup(0.01f + (params[paramIdx++] * 1.f),
-            0.5f + sqParam() * 100.f,
-            0.01 + (params[paramIdx++] * 0.3f), 1.f + sqParam() * 200.f, sampleRatef);
-
-        v1PitchEnv.setup(0.01f + (params[paramIdx++] * 3.f),
-            0.5f + sqParam() * 100.f,
-            0.f, 0.1f, sampleRatef);
-
-        v1PitchEmph = params[paramIdx++] * 10.f;
-
-        //v2 — hihat-biased PAF voice
-        v2p0Gain = 1.f;
-        v2p1Gain = 1.f;
-        v2p2Gain = 1.f;
-
-        v2BaseFreq = 1000.f + (params[paramIdx++] * 7000.f);   // 1–8 kHz
-        v2Detune1 = 1.0f + (params[paramIdx++] * 3.0f);        // 1–4 (inharmonic)
-        v2Detune2 = 1.0f + (params[paramIdx++] * 3.0f);
-
-        v2paf0_cf = params[paramIdx++] * 3.f;
-        v2paf1_cf = params[paramIdx++] * 3.f;
-        v2paf2_cf = params[paramIdx++] * 3.f;
-
-        v2paf0_bw = 100.f + (params[paramIdx++] * 900.f);      // high BW for noise content
-        v2paf1_bw = 100.f + (params[paramIdx++] * 900.f);
-        v2paf2_bw = 100.f + (params[paramIdx++] * 900.f);
-
-        v2paf0_shift = -200.f + (params[paramIdx++] * 400.f);
-        v2paf1_shift = -200.f + (params[paramIdx++] * 400.f);
-        v2paf2_shift = -200.f + (params[paramIdx++] * 400.f);
-
-        v2AmpEnv.setup(0.01f + (params[paramIdx++] * 0.1f),
-            0.5f + sqParam() * 50.f,
-            params[paramIdx++] * 0.1f, 1.f + sqParam() * 50.f, sampleRatef);
-
-        v2PitchEnv.setup(0.01f + (params[paramIdx++] * 1.f),
-            0.5f + sqParam() * 30.f,
-            0.f, 0.1f, sampleRatef);
-
-        v2PitchEmph = params[paramIdx++] * 5.f;
-        v2rmGain = params[paramIdx++];                          // ring mod for metallic texture
-
-        // currentVoiceSpace(params);
+        if (currentVoiceSpace) currentVoiceSpace(params);
     }
 
     queue_t qMIDINoteOn, qMIDINoteOff;
