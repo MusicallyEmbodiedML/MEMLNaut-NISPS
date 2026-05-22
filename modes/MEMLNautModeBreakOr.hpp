@@ -91,7 +91,7 @@ public:
     void setupMIDI(std::shared_ptr<MIDIInOut> new_midi_interf) {
       midi_interf = new_midi_interf;
       midi_interf->Setup(0);
-      midi_interf->SetMIDISendChannel(1);
+      midi_interf->SetMIDISendChannel(10);
       midi_interf->SetMIDINoteChannel(10);
       midi_interf->SetNoteCallback([this](bool noteon, uint8_t note_number, uint8_t vel_value) {
         Serial.printf("MIDI Note %d: %d %d\n", note_number, vel_value, noteon);

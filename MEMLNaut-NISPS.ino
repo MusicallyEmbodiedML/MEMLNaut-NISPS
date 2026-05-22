@@ -33,6 +33,7 @@
 // #define MODE_BUNTY
 // #define MODE_ELYSIAMORFS
 // #define MODE_MEMLCELIUM
+// #define MODE_D50
   
 #include "modes/MEMLNautMode.hpp"
 #ifdef MODE_PAFSYNTH
@@ -78,6 +79,10 @@
 #ifdef MODE_MEMLCELIUM
   #include "modes/MEMLNautModeMEMLCelium.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeMEMLCelium
+#endif
+#ifdef MODE_D50
+  #include "modes/MEMLNautModeD50.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeD50
 #endif
 
 MEMLNAUT_MODE_TYPE AUDIO_MEM MEMLNautModeHub;

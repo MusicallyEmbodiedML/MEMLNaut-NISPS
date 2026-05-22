@@ -64,6 +64,7 @@ public:
     bool sequencerPlaying = false;
 
     std::shared_ptr<MIDIInOut> midiIO;
+    unsigned long lastMidiSendMs_ = 0;
 
     RatioSeqEngine<kNRatioSeqs> seqEngine;
     std::array<FMPatternGenState, kNFMSeqs> fmStates;
@@ -113,8 +114,8 @@ public:
                 seqEngine.midiClockPhasor += seqEngine.midiClockPhasorInc;
                 if (seqEngine.midiClockPhasor >= 1.f) {
                     seqEngine.midiClockPhasor -= 1.f;
-                    midiIO->queueClock();
-                    midiIO->flushQueue();
+                    // midiIO->queueClock();
+                    // midiIO->flushQueue();
                 }
             }
             if (sequencerClockMode == MIDI_CLOCK) {
@@ -127,7 +128,7 @@ public:
             if (seqEngine.tick()) {
                 int ccIndex=0;
                 // static int ccNumbers[8] = {1,2,3,4,5,9,11,12};
-                static int ccNumbers[8] = {1,2,3,4,5,9,11,12};
+                static int ccNumbers[8] = {16,19,23,28,47,59,62,81};
                 // Trigger outputs (S1–S4)
                 for (size_t i = 0; i < kNRatioSeqs; i++) {
                     const float trigVal = seqEngine.states[i].lastTrig ? 1.f : 0.f;
@@ -146,7 +147,11 @@ public:
                     i2cValues[kNRatioSeqs + i] = fmVal;
                     midiIO->queueCC(ccNumbers[ccIndex++], static_cast<uint8_t>(fmVal * 127.f));
                 }
-                midiIO->flushQueue();
+                unsigned long now = millis();
+                if (now - lastMidiSendMs_ >= 30) {
+                    midiIO->flushQueue();
+                    lastMidiSendMs_ = now;
+                }
                 queue_try_add(&i2cOutQueue, &i2cValues);
             }
         }
@@ -170,12 +175,12 @@ public:
         seqEngine.setup(sample_rate);
         seqEngine.updateBPM(90.f);
 
-        seqEngine.onNoteOn = [this](size_t seqIdx, int velocity) {
-            midiIO->queueNoteOn(seqEngine.states[seqIdx].midiNote, velocity);
-        };
-        seqEngine.onNoteOff = [this](size_t seqIdx) {
-            midiIO->queueNoteOff(seqEngine.states[seqIdx].midiNote, 0);
-        };
+        // seqEngine.onNoteOn = [this](size_t seqIdx, int velocity) {
+        //     midiIO->queueNoteOn(seqEngine.states[seqIdx].midiNote, velocity);
+        // };
+        // seqEngine.onNoteOff = [this](size_t seqIdx) {
+        //     midiIO->queueNoteOff(seqEngine.states[seqIdx].midiNote, 0);
+        // };
     }
 
     void setupMIDI(std::shared_ptr<MIDIInOut> new_midi_interf) {
@@ -197,13 +202,13 @@ public:
         if (queue_try_remove(&sequencerControlQueue, &sequencerControl)) {
             sequencerPlaying = sequencerControl == 1;
             seqEngine.setPlaying(sequencerPlaying);
-            if (!sequencerPlaying) {
-                midiIO->queueClockStop();
-                midiIO->flushQueue();
-            } else {
-                midiIO->queueClockStart();
-                midiIO->flushQueue();
-            }
+            // if (!sequencerPlaying) {
+            //     midiIO->queueClockStop();
+            //     midiIO->flushQueue();
+            // } else {
+            //     midiIO->queueClockStart();
+            //     midiIO->flushQueue();
+            // }
         }
 
         seqEngine.updateParams(params, 0);  // params 0–27 → 4 ratio seqs
