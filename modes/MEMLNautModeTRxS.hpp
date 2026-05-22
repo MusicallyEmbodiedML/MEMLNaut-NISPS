@@ -10,6 +10,7 @@
 #include "MEMLNautMode.hpp"
 #include <memory>
 #include <array>
+#include <cstdio>
 
 // TR-6S MIDI CC targets — all 33 supported CCs, grouped by instrument then effects
 static const std::vector<CCOption> kTR6SCCOptions = {
@@ -45,8 +46,13 @@ static const std::vector<CCOption> kTR6SCCOptions = {
     { 70, "Fill IN Trig"   },
 };
 
-// Default 8 assignments: the 6 Ctrl knobs + Reverb + Delay Level
-static const std::vector<uint8_t> kTR6SDefaultCCs = { 96, 97, 102, 106, 107, 108, 91, 16 };
+// Default 16 assignments: 6 Ctrl knobs + Reverb + Delay (Level/Time/FB) + SD Tune/Decay + LT/HC/CH/OH Tune
+static const std::vector<uint8_t> kTR6SDefaultCCs = {
+    96, 97, 102, 106, 107, 108,   // BD/SD/LT/HC/CH/OH Ctrl
+    91, 16, 17, 18,               // Reverb Level, Delay Level/Time/Feedback
+    25, 28,                       // SD Tune, SD Decay
+    46, 58, 61, 80                // LT/HC/CH/OH Tune
+};
 
 class MEMLNautModeTRxS {
 public:
@@ -91,12 +97,17 @@ public:
     }
 
     void addViews() {
-        // CC assignment screen
         auto ccView = std::make_shared<CCSelectView>(TRxSAudioApp<>::kN_Params, "CC Assign");
         ccView->setOptions(kTR6SCCOptions);
-        ccView->setSelectedCCs(kTR6SDefaultCCs);
+
+        // Load persisted assignments, falling back to defaults
+        auto saved = loadCCAssignments();
+        ccView->setSelectedCCs(saved);
+        midi_interf->SetParamCCNumbers(saved);
+
         ccView->setOnChangeCallback([this](const std::vector<uint8_t>& ccs) {
             midi_interf->SetParamCCNumbers(ccs);
+            saveCCAssignments(ccs);
         });
         MEMLNaut::Instance()->disp->AddView(ccView);
         interface.addInputSourceView(false);
@@ -106,4 +117,33 @@ public:
     void analyse(stereosample_t) {}
     AudioDriver::codec_config_t getCodecConfig() { return audioApp.GetDriverConfig(); }
     void loopCore0() {}
+
+private:
+    static constexpr const char* kCCFile = "/trxs_cc.bin";
+
+    std::vector<uint8_t> loadCCAssignments() {
+        FILE* f = fopen(kCCFile, "rb");
+        if (f) {
+            std::vector<uint8_t> ccs;
+            uint8_t b;
+            while (fread(&b, 1, 1, f) == 1) ccs.push_back(b);
+            fclose(f);
+            Serial.printf("TRxS: loaded %u CC assignments from flash\n", (unsigned)ccs.size());
+            if (!ccs.empty()) return ccs;
+        } else {
+            Serial.println("TRxS: no saved CC assignments, using defaults");
+        }
+        return std::vector<uint8_t>(kTR6SDefaultCCs.begin(), kTR6SDefaultCCs.end());
+    }
+
+    void saveCCAssignments(const std::vector<uint8_t>& ccs) {
+        FILE* f = fopen(kCCFile, "wb");
+        if (f) {
+            fwrite(ccs.data(), 1, ccs.size(), f);
+            fclose(f);
+            Serial.printf("TRxS: saved %u CC assignments to flash\n", (unsigned)ccs.size());
+        } else {
+            Serial.println("TRxS: failed to open flash for writing");
+        }
+    }
 };

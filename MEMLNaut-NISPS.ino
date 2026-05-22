@@ -10,6 +10,7 @@
 #include "src/memllib/interface/MIDIInOut.hpp"
 #include "src/memllib/audio/AudioDriver.hpp"
 #include "src/memllib/hardware/memlnaut/MEMLNaut.hpp"
+#include "src/memllib/hardware/FlashFS.hpp"
 #include "hardware/structs/bus_ctrl.h"
 #include <memory>
 
@@ -164,6 +165,7 @@ void setup() {
 
   // Setup board
   MEMLNaut::Initialize();
+  FlashFS::begin();
   pinMode(33, OUTPUT);
 
   currentMode->setupInterface();

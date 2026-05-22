@@ -10,7 +10,7 @@
 #include <memory>
 #include <array>
 
-template<size_t NPARAMS=8>
+template<size_t NPARAMS=16>
 class TRxSAudioApp : public AudioAppBase<NPARAMS>
 {
 public:
