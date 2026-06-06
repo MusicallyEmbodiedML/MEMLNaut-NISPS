@@ -57,15 +57,15 @@ static const std::vector<uint8_t> kTR6SDefaultCCs = {
 };
 
 // Focus group bitmasks — one per TR-6S instrument/category
-static constexpr uint32_t kTRxSFocusBD = (1u << 0);
-static constexpr uint32_t kTRxSFocusSD = (1u << 1);
-static constexpr uint32_t kTRxSFocusLT = (1u << 2);
-static constexpr uint32_t kTRxSFocusHC = (1u << 3);
-static constexpr uint32_t kTRxSFocusCH = (1u << 4);
-static constexpr uint32_t kTRxSFocusOH = (1u << 5);
-static constexpr uint32_t kTRxSFocusFX = (1u << 6);
+static constexpr uint32_t kTR6SFocusBD = (1u << 0);
+static constexpr uint32_t kTR6SFocusSD = (1u << 1);
+static constexpr uint32_t kTR6SFocusLT = (1u << 2);
+static constexpr uint32_t kTR6SFocusHC = (1u << 3);
+static constexpr uint32_t kTR6SFocusCH = (1u << 4);
+static constexpr uint32_t kTR6SFocusOH = (1u << 5);
+static constexpr uint32_t kTR6SFocusFX = (1u << 6);
 
-class MEMLNautModeTRxS {
+class MEMLNautModeTR6S {
 public:
     constexpr static size_t kN_InputParams    = InterfaceRL::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
@@ -82,7 +82,7 @@ public:
     void setupInterface() {
         interface.setup(kN_InputParams, TRxSAudioApp<>::kN_Params);
         interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true);
-        interface.setModeInfo("trxs", "TR-6S");
+        interface.setModeInfo("tr6s", "TR-6S");
         interfacePtr = make_non_owning(interface);
 
         focusManager.setGroupName(0, "BD");
@@ -170,18 +170,18 @@ public:
     void loopCore0() {}
 
 private:
-    static constexpr const char* kCCFile = "/trxs_cc.bin";
+    static constexpr const char* kCCFile = "/tr6s_cc.bin";
 
     static uint32_t ccToGroupMask(uint8_t cc) {
         switch (cc) {
-            case 96:                              return kTRxSFocusBD;
-            case 97: case 25: case 28: case 29:  return kTRxSFocusSD;
-            case 102: case 46: case 47: case 48: return kTRxSFocusLT;
-            case 106: case 58: case 59: case 60: return kTRxSFocusHC;
-            case 107: case 61: case 62: case 63: return kTRxSFocusCH;
-            case 108: case 80: case 81: case 82: return kTRxSFocusOH;
+            case 96:                              return kTR6SFocusBD;
+            case 97: case 25: case 28: case 29:  return kTR6SFocusSD;
+            case 102: case 46: case 47: case 48: return kTR6SFocusLT;
+            case 106: case 58: case 59: case 60: return kTR6SFocusHC;
+            case 107: case 61: case 62: case 63: return kTR6SFocusCH;
+            case 108: case 80: case 81: case 82: return kTR6SFocusOH;
             case 91: case 16: case 17: case 18:
-            case 19: case 15: case 71: case 9: case 70: return kTRxSFocusFX;
+            case 19: case 15: case 71: case 9: case 70: return kTR6SFocusFX;
             default: return 0;
         }
     }
@@ -216,10 +216,10 @@ private:
             uint8_t b;
             while (fread(&b, 1, 1, f) == 1) ccs.push_back(b);
             fclose(f);
-            Serial.printf("TRxS: loaded %u CC assignments from flash\n", (unsigned)ccs.size());
+            Serial.printf("TR6S: loaded %u CC assignments from flash\n", (unsigned)ccs.size());
             if (!ccs.empty()) return ccs;
         } else {
-            Serial.println("TRxS: no saved CC assignments, using defaults");
+            Serial.println("TR6S: no saved CC assignments, using defaults");
         }
         return std::vector<uint8_t>(kTR6SDefaultCCs.begin(), kTR6SDefaultCCs.end());
     }
@@ -229,9 +229,9 @@ private:
         if (f) {
             fwrite(ccs.data(), 1, ccs.size(), f);
             fclose(f);
-            Serial.printf("TRxS: saved %u CC assignments to flash\n", (unsigned)ccs.size());
+            Serial.printf("TR6S: saved %u CC assignments to flash\n", (unsigned)ccs.size());
         } else {
-            Serial.println("TRxS: failed to open flash for writing");
+            Serial.println("TR6S: failed to open flash for writing");
         }
     }
 };

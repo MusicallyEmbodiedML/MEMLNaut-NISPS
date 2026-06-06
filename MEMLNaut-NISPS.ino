@@ -36,9 +36,10 @@
 // #define MODE_ELYSIAMORFS
 // #define MODE_MEMLCELIUM
 // #define MODE_D50
-// #define MODE_TRXS
+// #define MODE_TR6S
+#define MODE_TR8S
 // #define MODE_ROBOOP
-#define MODE_DJFX 
+// #define MODE_DJFX 
 // #define MODE_MOPHO
 // #define MODE_MICROQ
 // #define MODE_ERICA_FBANK
@@ -97,9 +98,13 @@
   #include "modes/MEMLNautModeD50.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeD50
 #endif
-#ifdef MODE_TRXS
-  #include "modes/MEMLNautModeTRxS.hpp"
-  #define MEMLNAUT_MODE_TYPE MEMLNautModeTRxS
+#ifdef MODE_TR6S
+  #include "modes/MEMLNautModeTR6S.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeTR6S
+#endif
+#ifdef MODE_TR8S
+  #include "modes/MEMLNautModeTR8S.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeTR8S
 #endif
 #ifdef MODE_ROBOOP
   #include "modes/MEMLNautModeRoboOp.hpp"

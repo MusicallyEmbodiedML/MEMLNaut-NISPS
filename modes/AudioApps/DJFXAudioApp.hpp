@@ -312,7 +312,7 @@ protected:
     RingMod           ringMod_;
     StutterGate       stutterGate_;
     maxiOsc           apLFO_;
-    ReverbI16<4096>   reverb_;
+    ReverbI16<4096>   reverb_;   // reverted from ReverbI16Large (startup crash — likely RAM)
     float             reverbMix_{0.f};
 
     float wetdry_mix_{0.5f};
