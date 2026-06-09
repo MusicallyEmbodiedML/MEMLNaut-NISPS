@@ -10,6 +10,13 @@
 #include "../../src/memllib/synth/ReverbI16.hpp"
 #include "../../voicespaces/VoiceSpaces.hpp"
 
+// Audio input source, selectable at compile time:
+//   1 = on-board mic (default), 0 = line-in (handy for bench testing with a line source).
+// Override with a build flag (e.g. -DSAXFX_USE_MIC=0) or by editing this default.
+#ifndef SAXFX_USE_MIC
+#define SAXFX_USE_MIC 0
+#endif
+
 template<size_t NPARAMS=47>
 class SaxFXAudioApp : public AudioAppBase<NPARAMS>
 {
@@ -52,7 +59,7 @@ public:
 
     AudioDriver::codec_config_t GetDriverConfig() const override {
         return {
-            .mic_input    = true,
+            .mic_input    = (SAXFX_USE_MIC != 0),   // compile-time: mic (default) vs line-in
             .line_level   = 3,
             .mic_gain_dB  = 0,
             .output_volume = 0.97f
@@ -220,6 +227,8 @@ public:
 
         float outL = out;
         float outR = out;
+        // float outL = mix;
+        // float outR = mix;
 
         if (enableReverb && reverbMix_ > 0.f) {
             auto [revL, revR] = reverb_.process(outL);
@@ -284,7 +293,7 @@ protected:
     GrainDelayI16<16384*4> grainDelay;
     GrainDelayI16<16384*1> grainDelay2;
     GrainDelayI16<16384*1> grainDelay3;
-    ReverbI16<4096> reverb_;
+    ReverbI16Large<2048> reverb_;   // larger/denser stereo reverb (2048 combs to fit RAM)
     float reverbMix_  = 0.f;
     float mixScale_   = 0.33333f;
     size_t currentVoiceSpaceIdx_ = 0;

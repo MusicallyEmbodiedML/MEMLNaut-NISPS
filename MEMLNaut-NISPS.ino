@@ -30,14 +30,14 @@
 // #define MODE_BREAKOR
 // #define MODE_BRAYKORE
 // #define MODE_VERBFX
-// #define MODE_SAXFX
+#define MODE_SAXFX
 // #define MODE_CHUNKYBITS
 // #define MODE_BUNTY
 // #define MODE_ELYSIAMORFS
 // #define MODE_MEMLCELIUM
 // #define MODE_D50
 // #define MODE_TR6S
-#define MODE_TR8S
+// #define MODE_TR8S
 // #define MODE_ROBOOP
 // #define MODE_DJFX 
 // #define MODE_MOPHO

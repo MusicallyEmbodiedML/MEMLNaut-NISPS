@@ -98,6 +98,8 @@ public:
     // loopCore0 (core 0) — same core, no lock needed.
     std::array<float, TRxSAudioApp<32>::kN_Params> liveValues_{};
     std::shared_ptr<CCSelectView> ccView_;
+    std::shared_ptr<BlockSelectView> focusView_;
+    std::function<void()> updateActiveDims_;
     // rvx (RV_X1) knob: fades NN modulation in/out around home. Written from the knob
     // callback, read in the param transform hook (same cross-core pattern as focusManager).
     volatile float fadeAmount_ = 0.f;
@@ -175,6 +177,7 @@ public:
                 active[i] = (mask == 0) || ((focusManager.paramGroupMask[i] & mask) != 0);
             interface.setActiveDims(active);
         };
+        updateActiveDims_ = updateActiveDims;
         updateActiveDims();
 
         // 12 focus blocks laid out 6x2; narrow buttons to fit the 320px display.
@@ -193,6 +196,7 @@ public:
             updateActiveDims();
         });
         MEMLNaut::Instance()->disp->InsertViewAfter(interface.nnOutputsGraphView, focusView);
+        focusView_ = focusView;
 
         auto ccView = std::make_shared<CCSelectView>(TRxSAudioApp<32>::kN_Params, "CC Assign");
         ccView->setOptions(kTR8SCCOptions);
@@ -200,14 +204,12 @@ public:
         ccView->setLiveValues(liveValues_.data());  // "out" column reads live MIDI values
         ccView_ = ccView;                            // for live refresh from loopCore0
 
+        // Boot default: load the global mapping file. Per-model mappings override this
+        // later via the extra-load callback whenever a model is loaded.
         std::vector<uint8_t> savedCCs;
         std::vector<float>   savedHomes;
         loadCCAssignments(savedCCs, savedHomes);
-        ccView->setSelectedCCs(savedCCs);
-        ccView->setHomeValues(savedHomes);
-        midi_interf->SetParamCCNumbers(savedCCs);
-        syncHomeArray(ccView->getHomeValues());
-        recomputeFocusGroups(savedCCs, focusView, updateActiveDims);
+        applyMapping(savedCCs, savedHomes);
 
         // CC selection changed: remap MIDI, resync homes + focus groups (live, no flash).
         ccView->setOnChangeCallback([this, ccView, focusView, updateActiveDims](const std::vector<uint8_t>& ccs) {
@@ -234,8 +236,35 @@ public:
             if (ccView->isFocused()) ccView->setHomeForCursor(v);
         }, 0);
 
+        // Bundle the mapping (CC assignments + home values) into each saved model, so
+        // loading a model restores its own mapping. The global file stays the boot default;
+        // edits on this page update that default via save-on-exit.
+        interface.setExtraSaveCallback([this]() -> std::vector<uint8_t> {
+            if (!ccView_) return {};
+            return serializeMapping(ccView_->getSelectedCCs(), ccView_->getHomeValues());
+        });
+        interface.setExtraLoadCallback([this](const uint8_t* data, uint16_t size, uint16_t) {
+            std::vector<uint8_t> ccs;
+            std::vector<float>   homes;
+            if (deserializeMapping(data, size, ccs, homes)) applyMapping(ccs, homes);
+        });
+
         MEMLNaut::Instance()->disp->AddView(ccView);
         interface.addInputSourceView(false);
+    }
+
+    // Apply a CC mapping (assignments + homes) to the view and live state. Used by the boot
+    // load and the per-model extra-load. Leaves the page non-dirty (no auto re-save to the
+    // global file — only real user edits update that).
+    void applyMapping(const std::vector<uint8_t>& ccs, const std::vector<float>& homes) {
+        if (!ccView_) return;
+        ccView_->setSelectedCCs(ccs);
+        ccView_->setHomeValues(homes);
+        if (midi_interf) midi_interf->SetParamCCNumbers(ccs);
+        syncHomeArray(ccView_->getHomeValues());
+        if (focusView_ && updateActiveDims_) recomputeFocusGroups(ccs, focusView_, updateActiveDims_);
+        ccView_->resetDirty();
+        ccView_->redraw();
     }
 
     inline void processAnalysisParams() {}
@@ -290,10 +319,41 @@ private:
         updateActiveDims();
     }
 
-    // Flash file format: [0xA5 magic][uint8 N][N CC bytes][N home bytes (0..127)].
+    // Mapping blob format: [0xA5 magic][uint8 N][N CC bytes][N home bytes (0..127)].
     // 0xA5 (>127) can't be a legacy first-CC byte, so old raw-CC files are detected
-    // and loaded with default (0) homes.
+    // and loaded with default (0) homes. Used for both the global flash file and the
+    // per-model extra-save blob.
     static constexpr uint8_t kCCFileMagic = 0xA5;
+
+    static std::vector<uint8_t> serializeMapping(const std::vector<uint8_t>& ccs,
+                                                 const std::vector<float>& homes) {
+        uint8_t n = (uint8_t)std::min<size_t>(ccs.size(), 255);
+        std::vector<uint8_t> out;
+        out.reserve(2 + 2 * n);
+        out.push_back(kCCFileMagic);
+        out.push_back(n);
+        for (size_t i = 0; i < n; i++) out.push_back(ccs[i]);
+        for (size_t i = 0; i < n; i++) {
+            float h = (i < homes.size()) ? homes[i] : 0.f;
+            out.push_back((uint8_t)(h * 127.f + 0.5f));
+        }
+        return out;
+    }
+
+    static bool deserializeMapping(const uint8_t* data, size_t size,
+                                   std::vector<uint8_t>& ccs, std::vector<float>& homes) {
+        ccs.clear();
+        homes.clear();
+        if (size >= 2 && data[0] == kCCFileMagic) {
+            size_t n = data[1];
+            if (size >= 2 + 2 * n) {
+                for (size_t i = 0; i < n; i++) ccs.push_back(data[2 + i]);
+                for (size_t i = 0; i < n; i++) homes.push_back(data[2 + n + i] / 127.f);
+                return true;
+            }
+        }
+        return false;
+    }
 
     void loadCCAssignments(std::vector<uint8_t>& ccs, std::vector<float>& homes) {
         ccs.clear();
@@ -305,14 +365,9 @@ private:
             while (fread(&b, 1, 1, f) == 1) raw.push_back(b);
             fclose(f);
 
-            if (raw.size() >= 2 && raw[0] == kCCFileMagic) {
-                size_t n = raw[1];
-                if (raw.size() >= 2 + 2 * n) {
-                    for (size_t i = 0; i < n; i++) ccs.push_back(raw[2 + i]);
-                    for (size_t i = 0; i < n; i++) homes.push_back(raw[2 + n + i] / 127.f);
-                    Serial.printf("TR8S: loaded %u CC assignments (with homes) from flash\n", (unsigned)n);
-                    return;
-                }
+            if (deserializeMapping(raw.data(), raw.size(), ccs, homes)) {
+                Serial.printf("TR8S: loaded %u CC assignments (with homes) from flash\n", (unsigned)ccs.size());
+                return;
             } else if (!raw.empty()) {
                 // Legacy: raw CC bytes, default homes.
                 ccs = raw;
@@ -328,19 +383,13 @@ private:
     }
 
     void saveCCAssignments(const std::vector<uint8_t>& ccs, const std::vector<float>& homes) {
+        std::vector<uint8_t> blob = serializeMapping(ccs, homes);
         FILE* f = fopen(kCCFile, "wb");
         if (f) {
-            uint8_t n = (uint8_t)std::min<size_t>(ccs.size(), 255);
-            fputc(kCCFileMagic, f);
-            fputc(n, f);
-            fwrite(ccs.data(), 1, n, f);
-            for (size_t i = 0; i < n; i++) {
-                float h = (i < homes.size()) ? homes[i] : 0.f;
-                uint8_t hb = (uint8_t)(h * 127.f + 0.5f);
-                fputc(hb, f);
-            }
+            fwrite(blob.data(), 1, blob.size(), f);
             fclose(f);
-            Serial.printf("TR8S: saved %u CC assignments (with homes) to flash\n", (unsigned)n);
+            Serial.printf("TR8S: saved %u CC assignments (with homes) to flash\n",
+                          (unsigned)(blob.size() >= 2 ? blob[1] : 0));
         } else {
             Serial.println("TR8S: failed to open flash for writing");
         }
