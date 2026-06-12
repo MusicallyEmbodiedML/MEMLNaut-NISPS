@@ -14,7 +14,7 @@
 //   1 = on-board mic (default), 0 = line-in (handy for bench testing with a line source).
 // Override with a build flag (e.g. -DSAXFX_USE_MIC=0) or by editing this default.
 #ifndef SAXFX_USE_MIC
-#define SAXFX_USE_MIC 0
+#define SAXFX_USE_MIC 1
 #endif
 
 template<size_t NPARAMS=47>

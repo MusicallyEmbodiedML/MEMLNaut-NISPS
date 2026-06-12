@@ -30,11 +30,11 @@
 // #define MODE_BREAKOR
 // #define MODE_BRAYKORE
 // #define MODE_VERBFX
-#define MODE_SAXFX
+// #define MODE_SAXFX
 // #define MODE_CHUNKYBITS
 // #define MODE_BUNTY
 // #define MODE_ELYSIAMORFS
-// #define MODE_MEMLCELIUM
+#define MODE_MEMLCELIUM
 // #define MODE_D50
 // #define MODE_TR6S
 // #define MODE_TR8S
@@ -244,7 +244,17 @@ void setup() {
 
 PERF_DECLARE(MLSTATS);
 
-#define ML_INFERENCE_PERIOD_US 5000
+// ML inference / param cadence, mode-dependent at compile time. A mode can override by
+// declaring `static constexpr uint32_t kMLInferencePeriodUs = ...;` (e.g. XIASRI uses 10000
+// to thin out NN bus bursts that contend with the audio core); others default to 5000.
+#include <type_traits>
+template<typename, typename = void>
+struct ModeMLPeriod { static constexpr uint32_t us = 5000; };
+template<typename T>
+struct ModeMLPeriod<T, std::void_t<decltype(T::kMLInferencePeriodUs)>> {
+    static constexpr uint32_t us = T::kMLInferencePeriodUs;
+};
+static constexpr uint32_t ML_INFERENCE_PERIOD_US = ModeMLPeriod<MEMLNAUT_MODE_TYPE>::us;
 
 void loop() {
 
