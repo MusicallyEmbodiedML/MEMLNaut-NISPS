@@ -29,12 +29,12 @@
 // #define MODE_XIASRI
 // #define MODE_BREAKOR
 // #define MODE_BRAYKORE
-// #define MODE_VERBFX
+#define MODE_VERBFX
 // #define MODE_SAXFX
 // #define MODE_CHUNKYBITS
 // #define MODE_BUNTY
 // #define MODE_ELYSIAMORFS
-#define MODE_MEMLCELIUM
+// #define MODE_MEMLCELIUM
 // #define MODE_D50
 // #define MODE_TR6S
 // #define MODE_TR8S
@@ -232,7 +232,7 @@ void setup() {
   helpView->post("MB: Up: Positive reward");
   helpView->post("MB: Down: Negative reward");
   helpView->post("X: Learning rate");
-  helpView->post("Y: Reward Scale");
+  helpView->post("Y: Mode Specific");
   helpView->post("Z: Exploration noise");
   helpView->post("Joystick: Explore / SW: Drag sound");
   MEMLNaut::Instance()->disp->AddView(helpView);

@@ -33,7 +33,7 @@ public:
 
 
     void setupInterface() {
-        interface.setup(kN_InputParams, VerbFXAudioApp<>::kN_Params);
+        interface.setup(kN_InputParams, VerbFXAudioApp<>::kN_Params, false /* no message screen */);
         interface.setRVX1Override([this](float value) {
             audioAppVerbFX.setWetDryQueued(value);
         });
@@ -101,7 +101,7 @@ public:
                 case 6: { auto msg = VerbFXAudioApp<>::controlMessages::MSG_ENABLE_DELAY_TO_REVERB; queue_try_add(&q, &msg); } break;
             }
         });
-        MEMLNaut::Instance()->disp->AddView(enableView);
+        // (enableView is inserted after the Focus screen below.)
 
         // Mark which NN output dims are live based on the focused groups.
         auto updateActiveDims = [this]() {
@@ -114,9 +114,11 @@ public:
         };
         updateActiveDims();
 
-        // Focus screen — one toggle per group (4 buttons => 2 rows x 2 cols).
+        // Focus screen — one toggle per group. 4 buttons => single row of 4
+        // (BlockSelectView uses 2 rows only when nButtons > 4), so size them to
+        // span the 320px screen: 10 + 4*68 + 3*10 gap = 312px.
         auto focusView = std::make_shared<BlockSelectView>(
-            "Focus", TFT_DARKGREY, (int)kVerbFX_NGroups, 140, 76, TFT_WHITE,
+            "Focus", TFT_DARKGREY, (int)kVerbFX_NGroups, 68, 76, TFT_WHITE,
             std::vector<String>{ "Verb", "Filt", "Delay", "Mix" },
             TFT_GREENYELLOW, 2 /* fontNum */);
         focusView->SetOnSelectCallback([this, focusView, updateActiveDims](size_t id) {
@@ -128,9 +130,12 @@ public:
         });
         MEMLNaut::Instance()->disp->InsertViewAfter(interface.nnOutputsGraphView, focusView);
 
+        // FX Enable comes right after Focus in the view order.
+        MEMLNaut::Instance()->disp->InsertViewAfter(focusView, enableView);
+
         std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
         voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
-        MEMLNaut::Instance()->disp->InsertViewAfter(focusView, voiceSpaceSelectView);
+        MEMLNaut::Instance()->disp->InsertViewAfter(enableView, voiceSpaceSelectView);
         voiceSpaceSelectView->setOptions(voiceSpaceList);
         voiceSpaceSelectView->setNewVoiceCallback(
             [this](size_t idx) {
