@@ -106,6 +106,11 @@ Under the Tools->Board: menu, select "Raspberry Pi Pico/2040/2350->Solder Party 
 ## Select the Build Optimization
 Optimize this code as much as possible. Use the Menu item Tools->Optimize:"Optimize Even More (-O3)"
 
+## Set aside space for the LittleFS flash file system
+The input source selection is store in the file `/input_source.bin` in the RP2350's flash chip. You
+need to set aside some space in the flash for the file system. The file is small. Use the Menu item
+Tools->Flash Size "16MB (Sketch:16320KB, FS:64KB)"
+
 ## Choose the mode you wish to build
 You can glean information about the various modes [here](https://musicallyembodiedml.github.io/posts/).
 
