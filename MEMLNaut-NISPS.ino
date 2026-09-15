@@ -45,6 +45,7 @@
 // #define MODE_MICROQ
 // #define MODE_ERICA_FBANK
 // #define MODE_STEAMPIPE
+// #define MODE_SYNTHOSORIUM
 
 #include "modes/MEMLNautMode.hpp"
 #ifdef MODE_PAFSYNTH
@@ -130,6 +131,10 @@
 #ifdef MODE_STEAMPIPE
   #include "modes/MEMLNautModeSteampipe.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeSteampipe
+#endif
+#ifdef MODE_SYNTHOSORIUM
+  #include "modes/MEMLNautModeSynthosorium.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeSynthosorium
 #endif
 
 MEMLNAUT_MODE_TYPE AUDIO_MEM MEMLNautModeHub;
