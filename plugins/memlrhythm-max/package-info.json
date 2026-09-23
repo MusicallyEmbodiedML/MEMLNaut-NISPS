@@ -1,0 +1,11 @@
+{
+	"name" : "memlrhythm",
+	"displayname" : "memlrhythm",
+	"version" : "0.1.0",
+	"author" : "MEML",
+	"description" : "The MEMLNaut's rhythm generators for Max: meml.euclid~ (Euclidean) and meml.ratioseq~ (ratio-based).",
+	"tags" : [ "rhythm", "sequencing", "euclidean" ],
+	"max_version_min" : "8.5",
+	"os" : { "macintosh" : { "platform" : [ "x64", "aarch64" ], "min_version" : "10.13" },
+	         "windows" : { "platform" : [ "x64" ], "min_version" : "10" } }
+}

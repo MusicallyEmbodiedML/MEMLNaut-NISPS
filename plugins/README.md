@@ -11,6 +11,12 @@ from a laptop.
 - **`nisps-max/`** — a Max package containing the `nisps` external, which
   compiles `NISPSCore` straight out of `nisps-sc/` (one copy of the engine)
   and exposes it as a control-rate Max object with a help patcher.
+- **`memlrhythm-max/`** — a Max package with the firmware's two rhythm
+  generators, `meml.euclid~` (from MODE_ELYSIAMORFS / MODE_MEMLCELIUM) and
+  `meml.ratioseq~` (the RatioSeqEngine behind MODE_MEMLCELIUM), plus a host
+  test that checks them against the firmware's own expressions. Independent
+  of the NISPS engine, though `nisps` is the obvious thing to drive them
+  with — every parameter is an attribute.
 
 `nisps-sc/` is where the engine lives; `nisps-max/` is glue. A change to the
 algorithm belongs in `nisps-sc/src/NISPSCore.cpp` and reaches both hosts.
