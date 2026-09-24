@@ -39,6 +39,7 @@ include_directories(
 add_library(${PROJECT_NAME} MODULE
 	"${CMAKE_CURRENT_SOURCE_DIR}/nisps.cpp"
 	"${NISPS_SC_PATH}/src/NISPSCore.cpp"
+	"${NISPS_SC_PATH}/src/NISPSStateFlat.cpp"
 	"${NISPS_SC_PATH}/memlp/MLP.cpp"
 	"${NISPS_SC_PATH}/memlp/Utils.cpp"
 )

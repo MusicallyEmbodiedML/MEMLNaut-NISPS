@@ -55,6 +55,7 @@ void NISPSCore::setInputs(const std::vector<float>& values) {
 }
 
 void NISPSCore::setNoiseLevel(float level) {
+    noiseLevel_ = level;
     float amplitude = level * kNoiseMaxAmplitude;
     if (amplitude < 0.01f) amplitude = 0.f;
     for (auto& n : ouNoises_) n->setStationaryStd(amplitude);
@@ -352,4 +353,125 @@ void NISPSCore::storeExperience(float reward, const std::vector<float>& state, c
             break;
     }
     if (!skipAdd) replayMem_.add(item, static_cast<size_t>(nowMs_));
+}
+
+
+// --- persistence -----------------------------------------------------------
+//
+// Deliberately not built on memlp's MLP::Serialise()/FromSerialised(): those
+// go through Layer::GetWeights2D()/SetWeights(), which touch m_weights only,
+// so the biases in m_biases would be dropped and a restored network would not
+// reproduce the sound that was saved. The per-layer accessors used here cover
+// both.
+void NISPSCore::captureState(NISPSState& out) {
+    out.version = NISPSState::kVersion;
+    out.n_inputs = n_inputs_;
+    out.n_outputs = n_outputs_;
+
+    out.layers.clear();
+    const size_t numLayers = mlp_.GetNumLayers();
+    out.layers.reserve(numLayers);
+    for (size_t l = 0; l < numLayers; ++l) {
+        Layer<float>& L = mlp_.GetLayerRef(l);
+        NISPSState::Layer ls;
+        ls.nodes = static_cast<size_t>(L.GetOutputSize());
+        ls.inputs = static_cast<size_t>(L.GetInputSize());
+        ls.weights.reserve(ls.nodes * ls.inputs);
+        ls.biases.reserve(ls.nodes);
+        for (size_t node = 0; node < ls.nodes; ++node) {
+            for (size_t in = 0; in < ls.inputs; ++in) ls.weights.push_back(L.weight(node, in));
+            ls.biases.push_back(L.bias(node));
+        }
+        out.layers.push_back(std::move(ls));
+    }
+
+    out.memory.clear();
+    out.memory.reserve(replayMem_.size());
+    for (size_t i = 0; i < replayMem_.size(); ++i) {
+        const TrainItem& item = replayMem_.getItem(i);
+        NISPSState::MemoryItem mi;
+        mi.input = item.input;
+        mi.action = item.action;
+        mi.reward = item.reward;
+        const double stamp = static_cast<double>(replayMem_.getTimestamp(i));
+        mi.ageMs = (nowMs_ > stamp) ? (nowMs_ - stamp) : 0.0;
+        out.memory.push_back(std::move(mi));
+    }
+
+    out.input = controlInput_;
+    out.action = action_;
+    out.learningRateScale = learningRateScale_;
+    out.rewardScale = rewardScale_;
+    out.noiseLevel = noiseLevel_;
+    out.optimiseDivisor = optimiseDivisor_;
+    out.memoryStoreMode = static_cast<int>(memoryStoreMode_);
+}
+
+bool NISPSCore::restoreState(const NISPSState& in) {
+    // Validate everything before writing anything, so a rejected snapshot
+    // leaves the engine exactly as it was.
+    if (in.version != NISPSState::kVersion) return false;
+    if (in.n_inputs != n_inputs_ || in.n_outputs != n_outputs_) return false;
+
+    const size_t numLayers = mlp_.GetNumLayers();
+    if (in.layers.size() != numLayers) return false;
+    for (size_t l = 0; l < numLayers; ++l) {
+        Layer<float>& L = mlp_.GetLayerRef(l);
+        const size_t nodes = static_cast<size_t>(L.GetOutputSize());
+        const size_t inputs = static_cast<size_t>(L.GetInputSize());
+        if (in.layers[l].nodes != nodes || in.layers[l].inputs != inputs) return false;
+        if (in.layers[l].weights.size() != nodes * inputs) return false;
+        if (in.layers[l].biases.size() != nodes) return false;
+    }
+    for (const auto& mi : in.memory) {
+        if (mi.input.size() != n_inputs_ || mi.action.size() != n_outputs_) return false;
+    }
+
+    for (size_t l = 0; l < numLayers; ++l) {
+        Layer<float>& L = mlp_.GetLayerRef(l);
+        const NISPSState::Layer& ls = in.layers[l];
+        size_t w = 0;
+        for (size_t node = 0; node < ls.nodes; ++node) {
+            for (size_t i = 0; i < ls.inputs; ++i) L.weight(node, i) = ls.weights[w++];
+            L.bias(node) = ls.biases[node];
+        }
+    }
+
+    // Ages are relative, so rebase the clock on the oldest item: that keeps
+    // every item's remaining lifetime (kDislikeLifetimeMs) intact and keeps
+    // the timestamps non-negative.
+    double oldest = 0.0;
+    for (const auto& mi : in.memory) oldest = std::max(oldest, mi.ageMs);
+    nowMs_ = std::max(nowMs_, oldest);
+
+    replayMem_.clear();
+    for (const auto& mi : in.memory) {
+        TrainItem item { mi.input, mi.action, mi.reward };
+        const double stamp = nowMs_ - mi.ageMs;
+        replayMem_.add(item, static_cast<size_t>(stamp > 0.0 ? stamp : 0.0));
+    }
+
+    if (in.input.size() == n_inputs_) controlInput_ = in.input;
+    if (in.action.size() == n_outputs_) {
+        action_ = in.action;
+        mappingOutput_ = in.action;
+    }
+
+    setLearningRateScale(in.learningRateScale);
+    setRewardScale(in.rewardScale);
+    setNoiseLevel(in.noiseLevel);
+    setOptimiseDivisor(in.optimiseDivisor);
+    if (in.memoryStoreMode >= static_cast<int>(MemoryStoreMode::ADD) &&
+        in.memoryStoreMode <= static_cast<int>(MemoryStoreMode::REWARD_DECAY_20_PERCENT)) {
+        setMemoryStoreMode(static_cast<MemoryStoreMode>(in.memoryStoreMode));
+    }
+
+    // Jolt state belongs to a gesture in progress, not to the saved mapping.
+    joltActive_ = false;
+    joltWeightLoc_.clear();
+    joltTarget_.clear();
+    joltLRRamp_ = 1.f;
+
+    newInput_ = true; // regenerate the action from the restored network
+    return true;
 }

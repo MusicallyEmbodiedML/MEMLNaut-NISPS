@@ -23,6 +23,50 @@
 #include "OrnsteinUhlenbeckNoise.h"
 #include "ReplayMemory.hpp"
 
+// A complete, portable snapshot of an engine's learned state: the network
+// (weights AND biases - memlp's own MLP::Serialise() covers only weights, see
+// captureState) plus the replay memory and the continuous controls. Plain
+// data, no file format and no host dependency: NISPS.cpp / nisps.cpp decide
+// how to store it.
+struct NISPSState {
+    static constexpr int kVersion = 1;
+
+    struct Layer {
+        size_t inputs = 0;              // inputs per node
+        size_t nodes = 0;               // nodes in this layer
+        std::vector<float> weights;     // nodes * inputs, node-major
+        std::vector<float> biases;      // nodes
+    };
+
+    struct MemoryItem {
+        std::vector<float> input;
+        std::vector<float> action;
+        float reward = 0.f;
+        // Milliseconds this item had already lived when it was captured.
+        // Stored as an age rather than a timestamp because the engine clock
+        // restarts at zero in a new instance.
+        double ageMs = 0.0;
+    };
+
+    int version = kVersion;
+    size_t n_inputs = 0;
+    size_t n_outputs = 0;
+    std::vector<Layer> layers;
+    std::vector<MemoryItem> memory;
+
+    // The current position and its mapped action, so a restored engine picks
+    // up where it left off - like/dislike act on exactly this pair.
+    std::vector<float> input;
+    std::vector<float> action;
+
+    // Continuous controls, as last set through the setters below.
+    float learningRateScale = 1.f;
+    float rewardScale = 1.f;
+    float noiseLevel = 0.f;
+    size_t optimiseDivisor = 1;
+    int memoryStoreMode = static_cast<int>(2); // REPLACE_10_PERCENT
+};
+
 class NISPSCore {
 public:
     enum class MemoryStoreMode {
@@ -72,7 +116,10 @@ public:
     bool isJoltActive() const { return joltActive_; }
 
     // --- continuous controls ---
-    void setLearningRateScale(float scale) { learningRateScaled_ = learningRate_ * scale; }
+    void setLearningRateScale(float scale) {
+        learningRateScale_ = scale;
+        learningRateScaled_ = learningRate_ * scale;
+    }
     void setRewardScale(float scale) { rewardScale_ = scale; }
     // level is the [0,1] "noise" knob; internally scaled to an OU stationary
     // std the same way the embedded RV Z1 knob is (see setNoiseLevel in
@@ -83,6 +130,15 @@ public:
     // process(), independent of the plugin's control-block rate.
     void setOptimiseDivisor(size_t divisor) { optimiseDivisor_ = divisor ? divisor : 1; }
     void setMemoryStoreMode(MemoryStoreMode mode) { memoryStoreMode_ = mode; }
+
+    // --- persistence ---
+    // Snapshot every piece of learned state, and put one back. restoreState()
+    // refuses a snapshot whose topology does not match this engine (different
+    // input/output width or layer shape) rather than loading it partially;
+    // it returns false and leaves the engine untouched. On success the next
+    // process() regenerates the action from the restored network.
+    void captureState(NISPSState& out);
+    bool restoreState(const NISPSState& in);
 
 private:
     struct TrainItem {
@@ -113,8 +169,10 @@ private:
     double nowMs_ = 0.0;
 
     float learningRate_ = 1e-3f;
+    float learningRateScale_ = 1.0f; // as given to setLearningRateScale, for captureState
     float learningRateScaled_ = learningRate_;
     float rewardScale_ = 1.0f;
+    float noiseLevel_ = 0.0f;        // as given to setNoiseLevel, for captureState
 
     size_t optimiseDivisor_ = 1;
     size_t optimiseCounter_ = 0;

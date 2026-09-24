@@ -102,10 +102,32 @@ def build():
     bang = p.box("button", 450, 160 + 28 * len(attrs), 24, nin=1, nout=1, outlettype=["bang"], h=24.0)
     p.comment(480, 160 + 28 * len(attrs) + 2, 250, "bang: tick once (use with active 0)")
 
+    # save / load
+    y_file = 160 + 28 * (len(attrs) + 1)
+    p.comment(450, y_file, 300, "save / load what it has learned")
+    file_msgs = [p.message(450, y_file + 25, "write", 60),
+                 p.message(515, y_file + 25, "read", 60),
+                 p.message(450, y_file + 53, "write mymap.json", 130),
+                 p.message(450, y_file + 81, "read mymap.json", 130)]
+    p.comment(580, y_file + 27, 180, "dialog")
+    p.comment(585, y_file + 55, 180, "straight to a file")
+
+    # slots: numbered snapshots, pattrstorage style
+    y_slot = y_file + 115
+    p.comment(450, y_slot, 320, "slots: whole mappings you can jump between")
+    slot_msgs = [p.message(450, y_slot + 25, "store 1", 70),
+                 p.message(525, y_slot + 25, "recall 1", 75),
+                 p.message(605, y_slot + 25, "store 2", 70),
+                 p.message(450, y_slot + 53, "recall 2", 75),
+                 p.message(530, y_slot + 53, "erase 2", 70),
+                 p.message(605, y_slot + 53, "slots", 55)]
+    file_msgs.extend(slot_msgs)
+    p.comment(450, y_slot + 81, 320, "right outlet answers: slots 1 2 / slot 1")
+
     # ---- the object
-    obj = p.newobj(30, 395, "nisps 2 4", 1, 2, ["", "int"], w=100.0)
+    obj = p.newobj(30, 395, "nisps 2 4 @file mymap.json @autoload 0", 1, 3, ["", "int", ""], w=250.0)
     p.connect(norm, obj)
-    for m in gesture_ids + attr_ids:
+    for m in gesture_ids + attr_ids + file_msgs:
         p.connect(m, obj)
     p.connect(bang, obj)
 
@@ -119,9 +141,12 @@ def build():
     nums = [p.flonum(250 + 65 * i, 470, 60) for i in range(4)]
     for i, n in enumerate(nums):
         p.connect(unpack, n, i, 0)
-    mem = p.box("number", 550, 395, 60, nin=1, nout=2, outlettype=["", "bang"])
+    mem = p.box("number", 300, 355, 60, nin=1, nout=2, outlettype=["", "bang"])
     p.connect(obj, mem, 1, 0)
-    p.comment(615, 395, 140, "outlet 1: memory size")
+    p.comment(365, 357, 160, "outlet 1: memory size")
+    info = p.newobj(430, 355, "print nisps", 1, 0, [])
+    p.connect(obj, info, 2, 0)
+    p.comment(520, 357, 200, "outlet 2: slot replies")
 
     # ---- hear it: output 0 -> pitch, output 1 -> level
     p.comment(250, 505, 300, "hear it: output 0 -> pitch, output 1 -> level")

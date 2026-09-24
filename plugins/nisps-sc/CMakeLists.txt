@@ -15,6 +15,7 @@ endif()
 # ---------------------------------------------------------------------------
 add_library(nisps_core STATIC
     src/NISPSCore.cpp
+    src/NISPSStateFlat.cpp
     memlp/MLP.cpp
     memlp/Utils.cpp
 )
