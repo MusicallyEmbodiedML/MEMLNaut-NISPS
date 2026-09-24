@@ -326,6 +326,42 @@ int main() {
     core.clearMemory();
     core.process();
 
+    // Training error: must appear once training actually runs, stay finite,
+    // and advance its pass counter only when a pass really happened.
+    bool errorOk = true;
+    {
+        NISPSCore ec(3, 4);
+        ec.setMemoryStoreMode(NISPSCore::MemoryStoreMode::ADD);
+        ec.setOptimiseDivisor(1);
+        if (ec.trainingPasses() != 0) errorOk = false; // nothing trained yet
+        std::mt19937 erng(3);
+        std::uniform_real_distribution<float> espread(0.f, 1.f);
+        // Likes alone drive the loss to zero: with exploration noise off the
+        // training target IS the network's own output, so there is nothing to
+        // correct. Dislikes push the target away from the action taken, which
+        // is what makes the error meaningful, so feed it both.
+        for (int i = 0; i < 200; ++i) {
+            ec.setInputs({ espread(erng), espread(erng), espread(erng) });
+            ec.advanceClock(5.0);
+            ec.process();
+            if (i % 2) ec.like();
+            else ec.dislike();
+        }
+        const unsigned long long passes = ec.trainingPasses();
+        const float err = ec.lastTrainingError();
+        if (passes == 0 || !std::isfinite(err) || !(err > 0.f)) errorOk = false;
+
+        // With training switched off the counter must stand still.
+        ec.setOptimiseDivisor(1000000);
+        for (int i = 0; i < 50; ++i) {
+            ec.setInputs({ espread(erng), espread(erng), espread(erng) });
+            ec.process();
+        }
+        if (ec.trainingPasses() != passes) errorOk = false;
+        std::printf("Training error:     %s (%.6f after %llu passes)\n", errorOk ? "PASS" : "FAIL",
+                    (double)err, passes);
+    }
+
     const bool roundTripOk = testStateRoundTrip();
     const bool flatOk = testFlatRoundTrip();
 
@@ -333,5 +369,5 @@ int main() {
     std::printf("Learning check:     %s (final should exceed initial; stochastic, non-fatal if borderline)\n",
                 (finalScore > initialScore) ? "PASS" : "INCONCLUSIVE");
 
-    return (rangeOk && roundTripOk && flatOk) ? 0 : 1;
+    return (rangeOk && roundTripOk && flatOk && errorOk) ? 0 : 1;
 }

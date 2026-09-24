@@ -91,6 +91,13 @@ public:
     // Number of like/dislike experiences currently held (0..kMemoryLimit).
     size_t memorySize() const { return replayMem_.size(); }
 
+    // Mean training loss (MSE) from the most recent optimise() pass, with a
+    // counter of how many passes have run: a caller polling at its own rate
+    // uses the counter to tell a fresh value from the previous one, since a
+    // loss that happens to repeat is not the same as no training at all.
+    float lastTrainingError() const { return lastTrainingError_; }
+    unsigned long long trainingPasses() const { return trainingPasses_; }
+
     // Advance the engine's notion of wall-clock time by the elapsed
     // milliseconds since the previous call. Replaces the embedded code's
     // calls to millis() — the caller (SCUnit wrapper) derives this from its
@@ -176,6 +183,9 @@ private:
 
     size_t optimiseDivisor_ = 1;
     size_t optimiseCounter_ = 0;
+
+    float lastTrainingError_ = 0.f;
+    unsigned long long trainingPasses_ = 0;
 
     std::vector<size_t> itemsToRemove_;
     MemoryStoreMode memoryStoreMode_ = MemoryStoreMode::REPLACE_10_PERCENT;

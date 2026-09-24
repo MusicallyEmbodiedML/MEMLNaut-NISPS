@@ -41,6 +41,10 @@
 //   outlet 1 (int)  : replay-memory size, after every like/dislike/clear/read
 //   outlet 2 (any)  : status replies - `slots <n> <n> ...` listing what is
 //                     stored, and `slot <n>` after a store or recall
+//   outlet 3 (float): training error - the mean loss of the most recent
+//                     training pass, sent each time a pass actually runs
+//                     (so it goes quiet when @traindivisor holds training
+//                     off, or when there is nothing in the replay memory)
 //
 //   attributes
 //     @active 1        run the internal clock (0 = tick only on bang)
@@ -96,6 +100,7 @@ struct State {
     std::vector<float> lastOut; // last action list emitted (for output-on-change)
     std::vector<t_atom> outAtoms;
     double lastTickMs = -1.0;   // scheduler time of the previous tick, <0 = none yet
+    unsigned long long reportedPasses = 0; // training passes already sent out
     bool warnedLength = false;  // one-off warning for a wrongly sized list
 
     // Numbered snapshots, sparse and 1-based like pattrstorage's slots. Held
@@ -109,7 +114,8 @@ typedef struct _nisps {
     void* clock;
     void* out_action; // left outlet: list
     void* out_memsize; // middle outlet: int
-    void* out_info;    // right outlet: status replies
+    void* out_info;    // status replies
+    void* out_error;   // right outlet: training error
     long n_inputs;
     long n_outputs;
     // attributes (Max reads these by offset; types must match the macros)
@@ -241,6 +247,7 @@ void* nisps_new(t_symbol* s, long argc, t_atom* argv) {
     x->state = new State(static_cast<size_t>(x->n_inputs), static_cast<size_t>(x->n_outputs));
 
     // outlets, right to left
+    x->out_error = floatout((t_object*)x);
     x->out_info = outlet_new((t_object*)x, NULL); // any message
     x->out_memsize = intout((t_object*)x);
     x->out_action = listout((t_object*)x);
@@ -269,8 +276,10 @@ void nisps_assist(t_nisps* x, void* b, long m, long a, char* s) {
         snprintf(s, 256, "(list) %ld mapped outputs in 0..1", x->n_outputs);
     } else if (a == 1) {
         snprintf(s, 256, "(int) replay memory size");
-    } else {
+    } else if (a == 2) {
         snprintf(s, 256, "(any) slots <n>... / slot <n>");
+    } else {
+        snprintf(s, 256, "(float) training error of the last training pass");
     }
 }
 
@@ -292,6 +301,8 @@ static void nisps_step(t_nisps* x, bool forceOutput) {
     State* st = x->state;
     bool emit = false;
     long nOut = 0;
+    bool trained = false;
+    double trainingError = 0.;
     {
         std::lock_guard<std::mutex> guard(st->lock);
         double nowMs = 0.0;
@@ -313,8 +324,19 @@ static void nisps_step(t_nisps* x, bool forceOutput) {
             for (long i = 0; i < nOut; ++i) atom_setfloat(&st->outAtoms[i], action[i]);
             emit = true;
         }
+
+        // A training pass may or may not have run inside process(): the pass
+        // counter, not the error value itself, says which - an unchanged loss
+        // is not the same thing as no training.
+        const unsigned long long passes = st->core.trainingPasses();
+        if (passes != st->reportedPasses) {
+            st->reportedPasses = passes;
+            trained = true;
+            trainingError = st->core.lastTrainingError();
+        }
     }
     // outside the lock: an outlet call may re-enter this object
+    if (trained) outlet_float(x->out_error, trainingError); // right outlet first
     if (emit && nOut > 0) outlet_list(x->out_action, NULL, static_cast<short>(nOut), st->outAtoms.data());
 }
 

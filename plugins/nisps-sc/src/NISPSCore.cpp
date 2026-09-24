@@ -171,6 +171,12 @@ void NISPSCore::stopJolt() {
 void NISPSCore::optimise() {
     const float effLR = learningRateScaled_ * joltLRRamp_;
 
+    // TrainBatch returns the mean loss over the batch; a pass can train on
+    // the positive set, the negative set, both or neither, so average
+    // whichever actually ran.
+    float lossSum = 0.f;
+    int lossCount = 0;
+
     // Positive batch: random sample (diversity for generalisation), trained
     // as imitation of the performer's own liked actions.
     std::vector<size_t> sample = replayMem_.sampleIndices(kBatchSize);
@@ -192,7 +198,8 @@ void NISPSCore::optimise() {
         }
         if (batchSizePos > 0) {
             avgRewardPos /= static_cast<float>(batchSizePos);
-            mlp_.TrainBatch(tsPositive, effLR * avgRewardPos, 1, kBatchSize, 0.f, false);
+            lossSum += mlp_.TrainBatch(tsPositive, effLR * avgRewardPos, 1, kBatchSize, 0.f, false);
+            lossCount++;
         }
     }
 
@@ -285,7 +292,13 @@ void NISPSCore::optimise() {
         const float negFraction =
             static_cast<float>(batchSizeNeg) / static_cast<float>(std::max(batchSizeNeg + totalPosCount, size_t { 1 }));
         const float negLRRatio = kNegLRBase - 0.4f * negFraction;
-        mlp_.TrainBatch(tsGeometric, effLR * negLRRatio, 1, batchSizeNeg, 0.f, false);
+        lossSum += mlp_.TrainBatch(tsGeometric, effLR * negLRRatio, 1, batchSizeNeg, 0.f, false);
+        lossCount++;
+    }
+
+    if (lossCount > 0) {
+        lastTrainingError_ = lossSum / static_cast<float>(lossCount);
+        trainingPasses_++;
     }
 
     replayMem_.removeItems(itemsToRemove_);
