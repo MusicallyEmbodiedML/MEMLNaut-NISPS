@@ -198,4 +198,39 @@ inline float offsetFromNorm(float x, float beats) {
 // onNoteOn(i, highAmp ? 127 : 64).
 inline int velocityFor(bool highAmp) { return highAmp ? 127 : 64; }
 
+// ---------------------------------------------------------------------------
+// Muting
+// ---------------------------------------------------------------------------
+// Turns a raw gate into the gate that should actually be heard, so that a
+// mute behaves the way a player expects rather than just zeroing a signal:
+//
+//   - muting part way through a note releases it, instead of leaving a MIDI
+//     note hanging until something else happens to end it;
+//   - unmuting part way through a slice stays silent until the next onset,
+//     instead of inventing a note-on in the middle of one. Both the gate
+//     signal and the note events come from this one decision, so they cannot
+//     disagree about whether a note is sounding;
+//   - time keeps running while muted, so unmuting lands wherever the pattern
+//     has got to rather than restarting it.
+struct GateState {
+    bool armed = false;    // this gate opened while unmuted, so it may sound
+    bool lastGate = false; // previous raw gate, for edge detection
+    bool audible = false;  // what the outlets should be showing
+};
+
+// Advances one sample. Returns true when `audible` changed, i.e. when a note
+// on or note off is due.
+inline bool gateStep(GateState& g, bool gate, bool muted) {
+    const bool rising = gate && !g.lastGate;
+    if (muted) g.armed = false;
+    else if (rising) g.armed = true;
+    if (!gate) g.armed = false; // a closed gate always disarms
+    g.lastGate = gate;
+
+    const bool audible = !muted && g.armed && gate;
+    const bool changed = (audible != g.audible);
+    g.audible = audible;
+    return changed;
+}
+
 } // namespace memlrhythm

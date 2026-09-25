@@ -266,6 +266,80 @@ void testNormalisedMappings() {
     check(allValid, "euclidFromNorm always yields n a power of 2 or 3, k <= n, offset < n");
 }
 
+
+void testMuting() {
+    // Unmuted, the audible gate is just the gate.
+    {
+        GateState g;
+        bool ok = true;
+        const bool pattern[] = { 0, 0, 1, 1, 1, 0, 0, 1, 1, 0 };
+        for (bool gate : pattern) {
+            gateStep(g, gate, false);
+            if (g.audible != gate) ok = false;
+        }
+        check(ok, "unmuted: the audible gate follows the gate exactly");
+    }
+
+    // Muting during a note releases it, once.
+    {
+        GateState g;
+        gateStep(g, true, false);
+        check(g.audible, "a gate that opens unmuted is audible");
+        const bool changed = gateStep(g, true, true);
+        check(changed && !g.audible, "muting during a note releases it (one change)");
+        const bool again = gateStep(g, true, true);
+        check(!again && !g.audible, "staying muted reports no further change");
+    }
+
+    // Muted throughout: no onset ever sounds, however many go by.
+    {
+        GateState g;
+        int changes = 0;
+        for (int i = 0; i < 40; ++i) {
+            const bool gate = (i % 4) < 2; // ten onsets
+            if (gateStep(g, gate, true)) ++changes;
+            if (g.audible) changes += 100; // must never happen
+        }
+        check(changes == 0, "muted: onsets pass silently and nothing is emitted");
+    }
+
+    // Unmuting part way through a slice must not invent a note-on.
+    {
+        GateState g;
+        gateStep(g, true, true);  // gate opens while muted
+        gateStep(g, true, false); // unmuted, still inside that slice
+        check(!g.audible, "unmuting mid-slice does not start a note");
+        gateStep(g, true, false);
+        check(!g.audible, "and stays silent for the rest of that slice");
+        gateStep(g, false, false); // slice ends
+        const bool changed = gateStep(g, true, false); // next onset
+        check(changed && g.audible, "the next onset after unmuting sounds");
+    }
+
+    // Unmuting between slices: the very next onset sounds.
+    {
+        GateState g;
+        gateStep(g, false, true);
+        gateStep(g, false, false);
+        const bool changed = gateStep(g, true, false);
+        check(changed && g.audible, "unmuting between slices arms the next onset");
+    }
+
+    // A mute/unmute cycle leaves no note hanging: every note-on is matched.
+    {
+        GateState g;
+        int balance = 0;
+        bool muted = false;
+        for (int i = 0; i < 400; ++i) {
+            const bool gate = (i % 7) < 3;
+            if (i % 23 == 0) muted = !muted; // flip at an unrelated period
+            if (gateStep(g, gate, muted)) balance += g.audible ? 1 : -1;
+        }
+        if (g.audible) balance -= 1; // a note still sounding at the end is fine
+        check(balance == 0, "every note-on is matched by a note-off across mute flips");
+    }
+}
+
 } // namespace
 
 int main() {
@@ -276,6 +350,7 @@ int main() {
     testRatioMusical();
     testRatioVoiceStep();
     testNormalisedMappings();
+    testMuting();
 
     std::printf("\n%d checks, %d failures\n", checks, failures);
     if (failures == 0) std::printf("PASS\n");

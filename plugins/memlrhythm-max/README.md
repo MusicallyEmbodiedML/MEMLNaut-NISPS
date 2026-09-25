@@ -72,6 +72,15 @@ one engine; here one object is one sequence, so make as many as you need.
 | `@pw` | 0.5 | pulse width, a fraction of each slice |
 | `@bpm` | 120. | internal tempo, used only when inlet 0 is unpatched |
 | `@beats` | 4. | beats per bar |
+| `@mute` | 0 | silence every outlet; settable as a `mute 1` message |
+
+`mute 1` silences all three outlets and `mute 0` lets them sound again.
+Muting part way through a note releases it, so nothing is left hanging
+downstream, and unmuting part way through a slice waits for the next onset
+rather than starting a note in the middle of one — the gate signal and the
+velocity outlet come from one decision, so they cannot disagree about whether
+a note is sounding. Time keeps running while muted, so unmuting lands
+wherever the pattern has got to instead of restarting it.
 
 `norm` takes the firmware's own parameter vector in
 `RatioSeqEngine::updateParams()` order: one 0..1 float per ratio, then `mul`,

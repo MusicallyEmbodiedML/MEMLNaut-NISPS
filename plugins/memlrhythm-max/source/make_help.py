@@ -121,7 +121,7 @@ def euclid_patch():
     bang = p.box("button", 250, 345, 24, nin=1, nout=1, outlettype=["bang"], h=24.0)
     p.connect(obj, bang, 1, 0)
     p.comment(280, 347, 200, "outlet 1: bang per pulse")
-    step = p.box("number", 250, 385, 50, nin=1, nout=2, outlettype=["", "bang"])
+    step = p.box("number", 250, 441, 50, nin=1, nout=2, outlettype=["", "bang"])
     p.connect(obj, step, 2, 0)
     p.comment(310, 387, 200, "outlet 2: step index")
 
@@ -129,7 +129,7 @@ def euclid_patch():
     p.comment(30, 470, 400, "hear it: the gate plucks a decaying sine")
     click = p.newobj(30, 495, "*~ 1.", 2, 1, ["signal"])
     env = p.newobj(30, 525, "slide~ 1 800", 3, 1, ["signal"])
-    osc = p.newobj(120, 525, "cycle~ 330", 2, 1, ["signal"])
+    osc = p.newobj(150, 525, "cycle~ 330", 2, 1, ["signal"])
     amp = p.newobj(30, 555, "*~", 2, 1, ["signal"])
     dac = p.box("ezdac~", 30, 590, 45, nin=2, nout=0, h=45.0)
     p.connect(obj, click, 0, 0)
@@ -143,69 +143,85 @@ def euclid_patch():
 
 
 def ratioseq_patch():
-    p = Patch(width=780.0, height=660.0)
+    # Laid out downwards from the object box: OBJ_Y follows the message
+    # column, and everything below is placed relative to it, so adding a
+    # message does not need every coordinate underneath to be nudged.
+    rows = [("mute 1", "silence all three outlets"),
+            ("mute 0", "let them sound again"),
+            ("ratios 1 2 1", "slice lengths"),
+            ("ratios 3 1 1 2", "any number of them"),
+            ("ampratios 1 3", "velocity pattern"),
+            ("mul 2.", "cycles per bar (1 2 4 8)"),
+            ("offset 0.25", "phase offset"),
+            ("pw 0.25", "pulse width per slice"),
+            ("norm 0.1 0.6 0.3 0.4 0.2 0.8 0.1", "NN vector: ratios, mul, offset, amp ratios"),
+            ("bpm 96", "internal tempo when unpatched")]
+
+    MSG_Y = 145.0
+    obj_y = MSG_Y + 28.0 * len(rows) + 30.0
+
+    p = Patch(width=780.0, height=obj_y + 330.0)
     p.comment(20, 15, 720, "meml.ratioseq~ - ratio-based rhythm generator", h=33.0, fontsize=20.0)
     p.comment(20, 50, 740,
               "One sequence of the RatioSeqEngine behind MODE_MEMLCELIUM. A cycle is cut into slices "
               "proportional to @ratios and each slice fires for @pw of its own length, so 1 2 1 gives "
-              "short, long, short. @ampratios is a second pattern choosing velocity 127 or 64.",
-              h=60.0)
+              "short, long, short. @ampratios is a second pattern choosing velocity 127 or 64. "
+              "mute 1 silences every outlet, releasing a note that is sounding rather than leaving it "
+              "hanging, and waits for the next onset when unmuted.",
+              h=72.0)
 
     p.comment(30, 120, 320, "bar phase - or leave unpatched for @bpm")
-    rate = p.flonum(30, 145, 60)
-    ph = p.newobj(30, 175, "phasor~ 0.5", 2, 1, ["signal"])
+    rate = p.flonum(30, MSG_Y, 60)
+    ph = p.newobj(30, MSG_Y + 30, "phasor~ 0.5", 2, 1, ["signal"])
     p.connect(rate, ph)
 
     p.comment(260, 120, 320, "parameters (all are attributes)")
     msgs = []
-    y = 145
-    for text, label in [("ratios 1 2 1", "slice lengths"),
-                        ("ratios 3 1 1 2", "any number of them"),
-                        ("ampratios 1 3", "velocity pattern"),
-                        ("mul 2.", "cycles per bar (1 2 4 8)"),
-                        ("offset 0.25", "phase offset"),
-                        ("pw 0.25", "pulse width per slice"),
-                        ("norm 0.1 0.6 0.3 0.4 0.2 0.8 0.1", "NN vector: ratios, mul, offset, amp ratios"),
-                        ("bpm 96", "internal tempo when unpatched")]:
+    for i, (text, label) in enumerate(rows):
+        y = MSG_Y + 28 * i
         msgs.append(p.message(260, y, text, 170))
         p.comment(435, y, 320, label)
-        y += 28
 
-    obj = p.newobj(30, 385, "meml.ratioseq~ 1 2 1", 1, 3, ["signal", "signal", "int"], w=160.0)
+    obj = p.newobj(30, obj_y, "meml.ratioseq~ 1 2 1", 1, 3, ["signal", "signal", "int"], w=160.0)
     p.connect(ph, obj)
     for m in msgs:
         p.connect(m, obj)
 
-    scope = p.box("scope~", 30, 425, 200, nin=2, nout=0, h=80.0)
+    # outlets 0 and 1: the two gates
+    y = obj_y + 45
+    scope = p.box("scope~", 30, y, 200, nin=2, nout=0, h=80.0)
     p.connect(obj, scope, 0, 0)
-    p.comment(30, 510, 220, "outlet 0: trigger gate")
-    scope2 = p.box("scope~", 250, 425, 200, nin=2, nout=0, h=80.0)
+    p.comment(30, y + 85, 220, "outlet 0: trigger gate")
+    scope2 = p.box("scope~", 250, y, 200, nin=2, nout=0, h=80.0)
     p.connect(obj, scope2, 1, 0)
-    p.comment(250, 510, 220, "outlet 1: amp gate")
-    vel = p.box("number", 470, 425, 50, nin=1, nout=2, outlettype=["", "bang"])
-    p.connect(obj, vel, 2, 0)
-    p.comment(530, 427, 240, "outlet 2: velocity, 0 on release")
+    p.comment(250, y + 85, 220, "outlet 1: amp gate")
 
-    p.comment(470, 455, 280, "-> makenote -> noteout for MIDI")
-    mk = p.newobj(470, 480, "makenote 0 200", 3, 2, ["int", "int"])
-    nt = p.newobj(470, 510, "noteout", 3, 0, [])
+    # outlet 2: velocity, straight into makenote -> noteout
+    p.comment(470, obj_y - 22, 300, "outlet 2: velocity, 0 on release")
+    vel = p.box("number", 470, y, 50, nin=1, nout=2, outlettype=["", "bang"])
+    p.connect(obj, vel, 2, 0)
+    mk = p.newobj(470, y + 30, "makenote 0 200", 3, 2, ["int", "int"])
+    nt = p.newobj(470, y + 60, "noteout", 3, 0, [])
     p.connect(vel, mk)
     p.connect(mk, nt, 0, 0)
     p.connect(mk, nt, 1, 1)
+    p.comment(470, y + 85, 280, "-> makenote -> noteout for MIDI")
 
-    p.comment(30, 540, 400, "or hear the gate directly")
-    click = p.newobj(30, 565, "*~ 1.", 2, 1, ["signal"])
-    env = p.newobj(30, 595, "slide~ 1 1200", 3, 1, ["signal"])
-    osc = p.newobj(130, 565, "cycle~ 220", 2, 1, ["signal"])
-    amp = p.newobj(30, 625, "*~", 2, 1, ["signal"])
-    dac = p.box("ezdac~", 250, 620, 45, nin=2, nout=0, h=45.0)
+    # or hear the trigger gate directly
+    y = obj_y + 165
+    p.comment(30, y, 400, "or hear the gate directly")
+    click = p.newobj(30, y + 25, "*~ 1.", 2, 1, ["signal"])
+    osc = p.newobj(130, y + 25, "cycle~ 220", 2, 1, ["signal"])
+    env = p.newobj(30, y + 55, "slide~ 1 1200", 3, 1, ["signal"])
+    amp = p.newobj(30, y + 85, "*~", 2, 1, ["signal"])
+    dac = p.box("ezdac~", 250, y + 80, 45, nin=2, nout=0, h=45.0)
     p.connect(obj, click, 0, 0)
     p.connect(click, env)
     p.connect(env, amp, 0, 0)
     p.connect(osc, amp, 0, 1)
     p.connect(amp, dac, 0, 0)
     p.connect(amp, dac, 0, 1)
-    p.comment(310, 632, 300, "turn audio on")
+    p.comment(310, y + 92, 300, "turn audio on, then try mute 1 / mute 0")
     return p.json()
 
 

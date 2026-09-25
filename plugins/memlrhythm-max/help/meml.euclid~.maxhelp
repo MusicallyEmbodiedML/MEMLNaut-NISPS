@@ -492,7 +492,7 @@
      "numoutlets": 2,
      "patching_rect": [
       250.0,
-      385.0,
+      441.0,
       50.0,
       22.0
      ],
@@ -575,7 +575,7 @@
      "numinlets": 2,
      "numoutlets": 1,
      "patching_rect": [
-      120.0,
+      150.0,
       525.0,
       84.0,
       22.0

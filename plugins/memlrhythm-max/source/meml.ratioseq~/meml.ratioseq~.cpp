@@ -23,6 +23,13 @@
 //                       per ratio, then mul, then offset, then one per amp
 //                       ratio. Ratios snap to 1..4, mul to 1/2/4/8, offset to
 //                       the @beats grid, exactly as the firmware maps them.
+//              mute 1 / mute 0  silence every outlet, or let them sound
+//                       again. Muting part way through a note releases it, so
+//                       nothing is left hanging downstream, and unmuting part
+//                       way through a slice waits for the next onset rather
+//                       than starting a note in the middle of one. Time keeps
+//                       running while muted, so unmuting lands wherever the
+//                       pattern has got to.
 //              reset    restart the internal phasor at 0
 //   outlet 0 (signal) : trigger gate, 1 while the slice sounds
 //   outlet 1 (signal) : amp gate, 1 where @ampratios is high
@@ -37,6 +44,7 @@
 //     @pw 0.5            pulse width as a fraction of each slice
 //     @bpm 120.          internal phasor tempo, used when inlet 0 is unpatched
 //     @beats 4.          beats per bar, for @bpm and `norm`'s offset grid
+//     @mute 0            silence every outlet (settable as a `mute 1` message)
 //
 // Every parameter is a Max attribute, settable by name at control rate, so
 // the whole generator can be driven from a mapping object such as nisps.
@@ -98,13 +106,14 @@ typedef struct _meml_ratioseq {
     double pw;
     double bpm;
     double beats;
+    long mute;
 
     // dsp state
     double phase;
     double phaseInc;
     double sr;
     short phaseConnected;
-    bool lastTrig;
+    memlrhythm::GateState gate; // plain bools, safe to live in the struct
 
     // set by perform64, read by the clock callback
     t_atom_long pendingVel;
@@ -177,6 +186,9 @@ void C74_EXPORT ext_main(void* r) {
     CLASS_ATTR_LABEL(c, "beats", 0, "Beats Per Bar");
     CLASS_ATTR_ACCESSORS(c, "beats", NULL, meml_ratioseq_set_bpm);
 
+    CLASS_ATTR_LONG(c, "mute", 0, t_meml_ratioseq, mute);
+    CLASS_ATTR_STYLE_LABEL(c, "mute", 0, "onoff", "Mute All Outlets");
+
     class_dspinit(c);
     class_register(CLASS_BOX, c);
     meml_ratioseq_class = c;
@@ -207,7 +219,8 @@ void* meml_ratioseq_new(t_symbol* s, long argc, t_atom* argv) {
     x->phase = 0.;
     x->sr = sys_getsr() > 0 ? sys_getsr() : 48000.;
     x->phaseConnected = 0;
-    x->lastTrig = false;
+    x->mute = 0;
+    x->gate = memlrhythm::GateState();
     x->pendingVel = 0;
     meml_ratioseq_update_inc(x);
 
@@ -235,7 +248,7 @@ void meml_ratioseq_free(t_meml_ratioseq* x) {
 
 void meml_ratioseq_assist(t_meml_ratioseq* x, void* b, long m, long a, char* s) {
     if (m == ASSIST_INLET) {
-        snprintf(s, 256, "(signal) bar phase 0..1, or messages: ratios, ampratios, mul, offset, pw, bpm, norm, reset");
+        snprintf(s, 256, "(signal) bar phase 0..1, or messages: ratios, ampratios, mul, offset, pw, bpm, mute, norm, reset");
     } else if (a == 0) {
         snprintf(s, 256, "(signal) trigger gate");
     } else if (a == 1) {
@@ -301,7 +314,7 @@ void meml_ratioseq_dsp64(t_meml_ratioseq* x, t_object* dsp64, short* count, doub
     x->sr = samplerate;
     x->phaseConnected = count[0];
     meml_ratioseq_update_inc(x);
-    x->lastTrig = false;
+    x->gate = memlrhythm::GateState();
     object_method(dsp64, gensym("dsp_add64"), x, meml_ratioseq_perform64, 0, NULL);
 }
 
@@ -320,12 +333,13 @@ void meml_ratioseq_perform64(t_meml_ratioseq* x, t_object* dsp64, double** ins, 
     const float offset = (float)x->offset;
     const float pw = (float)x->pw;
     const bool useInput = x->phaseConnected != 0;
+    const bool muted = x->mute != 0;
     const double inc = x->phaseInc;
 
     double phase = x->phase;
-    bool lastTrig = x->lastTrig;
+    memlrhythm::GateState gate = x->gate;
     bool changed = false;
-    bool finalTrig = lastTrig;
+    bool finalAudible = gate.audible;
     bool finalAmp = false;
 
     for (long i = 0; i < sampleframes; ++i) {
@@ -342,26 +356,27 @@ void meml_ratioseq_perform64(t_meml_ratioseq* x, t_object* dsp64, double** ins, 
         bool amp = false;
         ratioVoiceStep(ph, mul, offset, pw, ratios, ampRatios, trig, amp);
 
-        trigOut[i] = trig ? 1.0 : 0.0;
-        ampOut[i] = amp ? 1.0 : 0.0;
-
-        if (trig != lastTrig) {
+        // One decision drives both outlets and the note events, so the gate
+        // signal can never claim a note the velocity outlet has not started.
+        if (gateStep(gate, trig, muted)) {
             changed = true;
-            finalTrig = trig;
+            finalAudible = gate.audible;
             finalAmp = amp;
         }
-        lastTrig = trig;
+
+        trigOut[i] = gate.audible ? 1.0 : 0.0;
+        ampOut[i] = (!muted && amp) ? 1.0 : 0.0;
     }
 
     x->phase = phase;
-    x->lastTrig = lastTrig;
+    x->gate = gate;
 
     // Note on / note off, off the audio thread. clock_delay re-arms, so if a
     // vector contains several edges only the last state is sent - at any
     // sensible tempo an edge per vector is already far more than a player
     // hears, and it keeps note-ons and note-offs balanced.
     if (changed) {
-        x->pendingVel = finalTrig ? velocityFor(finalAmp) : 0;
+        x->pendingVel = finalAudible ? velocityFor(finalAmp) : 0;
         clock_delay(x->clock, 0);
     }
 }
