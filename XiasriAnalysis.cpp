@@ -49,14 +49,16 @@ void XiasriAnalysis::ReinitFilters() {
 
 }
 
-// Use fast approximation (~10 cycles):
-// __force_inline float fast_log2(float x) {
-//     static constexpr float INV_MANTISSA_SCALE = 1.0f / 8388608.0f;
-//     uint32_t bits;
-//     memcpy(&bits, &x, sizeof(float));  // Standards-compliant type punning
-//     return (float)(((bits >> 23) & 0xFF) - 127) + 
-//            (float)(bits & 0x7FFFFF) * INV_MANTISSA_SCALE;
-// }
+// Fast log2 for positive normal floats: exponent + quadratic fit of log2(1+m) on the mantissa
+// (max error ~0.008). Replaces libm log2f, which lives in flash and ran every sample.
+__force_inline float fast_log2(float x) {
+    static constexpr float INV_MANTISSA_SCALE = 1.0f / 8388608.0f;
+    uint32_t bits;
+    __builtin_memcpy(&bits, &x, sizeof(float));  // type punning, always inlined
+    const float e = (float)((int32_t)((bits >> 23) & 0xFF) - 127);
+    const float m = (float)(bits & 0x7FFFFF) * INV_MANTISSA_SCALE;
+    return e + m * (1.3465f - 0.3465f * m);
+}
 
 inline float logEnvelopeFast(float linearEnv) {
     // -60 dBFS corresponds to a linear amplitude ratio of 10^(-60/20) = 10^(-3) = 0.001
@@ -79,7 +81,7 @@ inline float logEnvelopeFast(float linearEnv) {
     // Clamp input to minimum envelope value
     linearEnv = (linearEnv > MIN_ENV) ? linearEnv : MIN_ENV;
 
-    float log2_val = log2f(linearEnv);
+    float log2_val = fast_log2(linearEnv);
 
     // Map to [0,1]: (log2_val - log2_min) / (log2_max - log2_min)
     float y = (log2_val - LOG2_MIN_ENV) * INV_LOG_RANGE;
@@ -99,7 +101,7 @@ inline float logEnvelopeFast(float linearEnv) {
 
 __attribute__((hot, flatten))
 XiasriAnalysis::parameters_t AUDIO_FUNC(XiasriAnalysis::Process)(const float x) {
-    parameters_t params = {};
+    parameters_t params;  // every field is assigned below (= {} compiled to a flash memset)
     
     // Pre-filter
     float pre_filtered = common_hpf_.play(x);

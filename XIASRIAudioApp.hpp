@@ -13,7 +13,7 @@
 #include "voicespaces/VoiceSpaces.hpp"
 #include "src/memllib/synth/OnePoleSmoother.hpp"
 #include "src/memllib/synth/maximilian.h"
-#include "src/daisysp/Effects/pitchshifter.h"
+#include "src/daisysp/Effects/memlDaisyPitchShifter.h"
 #include "src/memllib/synth/ReverbI16.hpp"
 
 
@@ -89,10 +89,7 @@ public:
         float dl4fb = (smoothParams[23] * 0.95f);
         // Wet-dry mix between 0.2 and 1
         wetdry_mix_ = (smoothParams[11] * 0.7f) + 0.3f;
-        // Pitch shift transposition between -12 and +12 semitones
-        // float pitchshift_transpose = (smoothParams[12] * 24.f) - 12.f; // Scale to -12 to +12 semitones
-        pitchshifter_.SetTransposition(12.f + smoothParams[12]);
-        //pitchshifter_.SetTransposition(-5.f);
+        // Pitch shift transposition is set at control rate in ProcessParams (exp2f).
         // Set pitch shifter mix
         pitchshifter_mix_ = smoothParams[13] * 0.99f;
 
@@ -134,7 +131,7 @@ public:
             float d3 = (dl3.play(y, 299, dl3fb) * dl3mix);
             float d4 = (dl4.play(y, 15873, dl4fb) * dl4mix);
 
-            y = y + d1 + d2 + d3;
+            y = y + d1 + d2 + d3 + d4;
             y = dcb2.play(y, 0.99f);
         }
 
@@ -142,7 +139,7 @@ public:
         // Mix dry
         y = (y * wetdry_mix_) + (mix * (1.f - wetdry_mix_));
 
-        y = tanhf(y*1.2f);
+        y = fastTanh(y*1.2f);
 
         // Large reverb after the pitch shifter / FX network. NN-controlled (params 24-34),
         // wet mix scaled to 0..50%. Reverb is stereo, so the output spreads to L/R.
@@ -175,7 +172,19 @@ public:
         return x - x * x * x * kCub;
     }
 
-    void Setup(float sample_rate, std::shared_ptr<InterfaceBase> interface) override
+    // Padé tanh approximation (one divide vs libm tanhf). Input clamped to ±3, where the
+    // rational reaches exactly ±1 with zero slope, so the curve stays continuous and bounded.
+    static float __force_inline fastTanh(float x)
+    {
+        static float kClamp = 3.f;      // SRAM (non-const static) to avoid flash literal reads
+        static float kA = 27.f;
+        static float kB = 9.f;
+        x = fminf(fmaxf(x, -kClamp), kClamp);
+        const float x2 = x * x;
+        return x * (kA + x2) / (kA + kB * x2);
+    }
+
+    void Setup(float sample_rate,std::shared_ptr<InterfaceBase> interface) override
     {
         AudioAppBase<NPARAMS>::Setup(sample_rate, interface);
         maxiSettings::sampleRate = sample_rate;
@@ -193,6 +202,10 @@ public:
 
         // Reverb params (24-34) set at control rate; the wet mix (34) is read per-sample
         // (smoothed) in Process. Slow-changing reverb controls don't need per-sample smoothing.
+        // Continuous (non-integer) transposition, +12..+13 semitones. Control rate: the
+        // phasor rate change is phase-continuous, so 100 Hz steps don't click.
+        pitchshifter_.SetTransposition(12.f + params[12]);
+
         reverb_.setSize(       params[24]);
         reverb_.setDecay(      params[25]);
         reverb_.setDamping(    params[26]);
@@ -246,7 +259,7 @@ protected:
     maxiBiquad bassCut;
     maxiBiquad bassCut2;
 
-    daisysp::PitchShifter pitchshifter_;
+    memlDaisyPitchShifter pitchshifter_;   // SRAM-resident copy of daisysp::PitchShifter
     float pitchshifter_mix_{0.5f};
     float wetdry_mix_{0.5f};
 

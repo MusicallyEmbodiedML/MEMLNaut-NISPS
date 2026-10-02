@@ -26,7 +26,8 @@ namespace VUMeter {
         static float kAttack  = 0.6f;    // near-instant rise toward the block peak
         static float kRelease = 0.006f;  // ~50 ms fall
 
-        float pk[4] = {0, 0, 0, 0};
+        float pk[4];  // zeroed per element: a {0,...} initialiser compiles to a flash memset
+        for (int c = 0; c < 4; ++c) pk[c] = 0.f;
         for (size_t i = 0; i < n; ++i) {
             pk[0] = fmaxf(pk[0], fabsf(in[0][i]));
             pk[1] = fmaxf(pk[1], fabsf(in[1][i]));
