@@ -150,6 +150,13 @@ public:
 
     queue_t controlMessageQueue;
 
+    queue_t wetdryQueue;
+
+    // RVX1 knob (repurposed from reward scaling) -> parallel dry/wet blend.
+    void setWetDryQueued(float value) {
+        queue_try_add(&wetdryQueue, &value);
+    }
+
     std::array<VoiceSpace<NPARAMS>, nVoiceSpaces> voiceSpaces;
     
     VoiceSpaceFn<NPARAMS> currentVoiceSpace;
@@ -198,6 +205,7 @@ public:
         currentVoiceSpace = voiceSpaces[0].mappingFunction;   
         
         queue_init(&controlMessageQueue, sizeof(controlMessages), 1);
+        queue_init(&wetdryQueue, sizeof(float), 1);
 
     };
 
@@ -229,7 +237,7 @@ public:
                 y1 = peak0_1.play(y1);
                 y1 = peak1_1.play(y1);
                 y1 = lowshelf1.play(y1);
-                // y1 = highshelf1.play(y1);
+                y1 = highshelf1.play(y1);
 
             }
             if (!bypassComp) {
@@ -241,7 +249,11 @@ public:
                 y1 = tanhf(y1 * postGain);
             }
         }
-        stereosample_t ret { y, y1};
+        // Parallel dry/wet blend (equal-power), driven by the RVX1 knob.
+        stereosample_t ret {
+            (y  * wetGain) + (x[0] * dryGain),
+            (y1 * wetGain) + (x[1] * dryGain)
+        };
         return ret;
     }
 
@@ -257,6 +269,13 @@ public:
 
     __attribute__((always_inline)) void ProcessParams(const std::array<float, NPARAMS>& params)
     {
+        {
+            float v;
+            if (queue_try_remove(&wetdryQueue, &v)) wetdryMix = v;
+        }
+        wetGain = sqrtf(wetdryMix);
+        dryGain = sqrtf(1.f - wetdryMix);
+
         controlMessages msg;
         while (queue_try_remove(&controlMessageQueue, &msg)) {
             Serial.printf("ChannelStripAudioApp: received control message %d\n", static_cast<int>(msg));
@@ -302,6 +321,11 @@ protected:
 
     float preGain=1.f;
     float postGain=1.f;
+
+    // Dry/wet blend (1 = fully processed). Gains precomputed at control rate.
+    float wetdryMix=1.f;
+    float wetGain=1.f;
+    float dryGain=0.f;
 
     maxiFilter inHighPass, inLowPass;
     maxiFilter inHighPass1, inLowPass1;
