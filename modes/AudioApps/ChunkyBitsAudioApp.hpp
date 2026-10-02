@@ -11,9 +11,9 @@ class ChunkyBitsAudioApp : public AudioAppBase<NPARAMS>
 public:
     static constexpr size_t kN_Params = NPARAMS;
 
-    static constexpr uint8_t kArpNotes[4] = {30, 42, 54, 66};
-    static constexpr size_t  kArpLen      = 4;
-    static constexpr float   kArpBPM      = 90.f;
+    static constexpr uint8_t kArpNotes[7] = {18, 30, 42, 54, 66, 78, 90};
+    static constexpr size_t  kArpLen      = 7;
+    static constexpr float   kArpBPM      = 147.f;
 
     enum class Waveform : uint8_t {
         Saw = 0, Square, Triangle, FallingSaw, Sine,
@@ -73,7 +73,7 @@ public:
         // Grain3 captures the mixed output
         grainDelay3Out_ = grainDelay3_.process(mixed);
 
-        float out = fasttanh(mixed * 2.f);
+        float out = fasttanh(mixed * 2.f) * envVal_;
         return { out, out };
     }
 
