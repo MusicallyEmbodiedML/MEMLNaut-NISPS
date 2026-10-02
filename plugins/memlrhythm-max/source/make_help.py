@@ -86,6 +86,9 @@ def euclid_patch():
 
     # parameters
     p.comment(260, 120, 300, "parameters (all are attributes)")
+    mute_msgs = [p.message(260, 120, "mute 1", 70), p.message(335, 120, "mute 0", 70)]
+    p.comment(410, 122, 300, "silence the gate and the bangs")
+
     params = [("n $1", "steps per cycle", 1, 32, 8),
               ("k $1", "pulses", 1, 32, 3),
               ("offset $1", "rotation in steps", 0, 31, 0)]
@@ -110,7 +113,7 @@ def euclid_patch():
 
     obj = p.newobj(30, 300, "meml.euclid~ 8 3", 1, 3, ["signal", "bang", "int"], w=140.0)
     p.connect(ph, obj)
-    for m in globals().get("param_msgs", []) + [pwmsg, normmsg, bpmmsg]:
+    for m in globals().get("param_msgs", []) + [pwmsg, normmsg, bpmmsg] + mute_msgs:
         p.connect(m, obj)
     globals()["param_msgs"] = []
 

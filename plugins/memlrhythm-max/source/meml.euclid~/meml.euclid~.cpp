@@ -15,6 +15,11 @@
 //                       firmware maps NN output (EuclideanAudioApp::
 //                       VoiceOperator_): n snapped to a power of 2 or 3
 //                       within @nrange, k within @krange, offset over 0..n-1
+//              mute 1 / mute 0  silence the gate and stop the bangs, or let
+//                       them through again. Unmuting part way through a pulse
+//                       waits for the next onset rather than opening the gate
+//                       mid-pulse, and time keeps running while muted, so
+//                       unmuting lands wherever the cycle has got to.
 //              reset    restart the internal phasor at 0
 //   outlet 0 (signal) : gate, 1 while a pulse sounds, 0 otherwise
 //   outlet 1 (bang)   : one bang at each pulse onset (scheduler thread)
@@ -30,6 +35,7 @@
 //     @beats 4.       beats per cycle for @bpm and for `norm`'s offset grid
 //     @nrange 1 16    n limits used by `norm`
 //     @krange 1 16    k limits used by `norm`
+//     @mute 0         silence the outlets (settable as a `mute 1` message)
 //
 // Every parameter is a Max attribute, so all of them are settable at control
 // rate by name (`n 12`, `pw 0.25`) from any patch cord, which is what makes
@@ -63,6 +69,7 @@ typedef struct _meml_euclid {
     double pw;
     double bpm;
     double beats;
+    long mute;
     long nrange[2]; // CLASS_ATTR_LONG_VARSIZE requires literally `long`
     long nrange_count;
     long krange[2];
@@ -73,7 +80,7 @@ typedef struct _meml_euclid {
     double phaseInc;   // per sample, recomputed in dsp64 and by @bpm / @beats
     double sr;
     short phaseConnected;
-    bool lastGate;
+    memlrhythm::GateState gate; // plain bools, safe to live in the struct
 
     // set by perform64, read by the clock callback
     t_atom_long pendingStep;
@@ -138,6 +145,9 @@ void C74_EXPORT ext_main(void* r) {
     CLASS_ATTR_LONG_VARSIZE(c, "krange", 0, t_meml_euclid, krange, krange_count, 2);
     CLASS_ATTR_LABEL(c, "krange", 0, "k Range For norm");
 
+    CLASS_ATTR_LONG(c, "mute", 0, t_meml_euclid, mute);
+    CLASS_ATTR_STYLE_LABEL(c, "mute", 0, "onoff", "Mute Outlets");
+
     class_dspinit(c);
     class_register(CLASS_BOX, c);
     meml_euclid_class = c;
@@ -167,7 +177,8 @@ void* meml_euclid_new(t_symbol* s, long argc, t_atom* argv) {
     x->phase = 0.;
     x->sr = sys_getsr() > 0 ? sys_getsr() : 48000.;
     x->phaseConnected = 0;
-    x->lastGate = false;
+    x->mute = 0;
+    x->gate = memlrhythm::GateState();
     x->pendingStep = 0;
     meml_euclid_update_inc(x);
 
@@ -187,7 +198,7 @@ void meml_euclid_free(t_meml_euclid* x) {
 
 void meml_euclid_assist(t_meml_euclid* x, void* b, long m, long a, char* s) {
     if (m == ASSIST_INLET) {
-        snprintf(s, 256, "(signal) phase 0..1, or messages: n, k, offset, pw, bpm, norm, reset");
+        snprintf(s, 256, "(signal) phase 0..1, or messages: n, k, offset, pw, bpm, mute, norm, reset");
     } else if (a == 0) {
         snprintf(s, 256, "(signal) gate, 1 while a pulse sounds");
     } else if (a == 1) {
@@ -250,7 +261,7 @@ void meml_euclid_dsp64(t_meml_euclid* x, t_object* dsp64, short* count, double s
     x->sr = samplerate;
     x->phaseConnected = count[0];
     meml_euclid_update_inc(x);
-    x->lastGate = false;
+    x->gate = memlrhythm::GateState();
     object_method(dsp64, gensym("dsp_add64"), x, meml_euclid_perform64, 0, NULL);
 }
 
@@ -267,10 +278,11 @@ void meml_euclid_perform64(t_meml_euclid* x, t_object* dsp64, double** ins, long
     const long offset = (long)x->offset;
     const float pw = (float)x->pw;
     const bool useInput = x->phaseConnected != 0;
+    const bool muted = x->mute != 0;
     const double inc = x->phaseInc;
 
     double phase = x->phase;
-    bool lastGate = x->lastGate;
+    memlrhythm::GateState gate = x->gate;
     bool fired = false;
     long firedStep = 0;
 
@@ -284,18 +296,18 @@ void meml_euclid_perform64(t_meml_euclid* x, t_object* dsp64, double** ins, long
             if (phase >= 1.) phase -= 1.;
         }
 
-        const bool gate = euclideanGate(ph, n, k, offset, pw);
-        out[i] = gate ? 1.0 : 0.0;
-
-        if (gate && !lastGate) {
+        // The gate signal and the bang come from one decision, so a muted
+        // object cannot show an open gate without having banged for it.
+        const bool raw = euclideanGate(ph, n, k, offset, pw);
+        if (gateStep(gate, raw, muted) && gate.audible) {
             fired = true;
             firedStep = euclideanStep(ph, n);
         }
-        lastGate = gate;
+        out[i] = gate.audible ? 1.0 : 0.0;
     }
 
     x->phase = phase;
-    x->lastGate = lastGate;
+    x->gate = gate;
 
     // No outlet calls from the audio thread: hand the onset to a clock, which
     // re-arms, so several onsets in one vector coalesce into one bang.

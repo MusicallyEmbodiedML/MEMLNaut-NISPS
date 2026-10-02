@@ -42,6 +42,13 @@ each pulse lasting `pw` of one step.
 | `@beats` | 4. | beats per cycle |
 | `@nrange` | 1 16 | `n` limits used by `norm` |
 | `@krange` | 1 16 | `k` limits used by `norm` |
+| `@mute` | 0 | silence the outlets; settable as a `mute 1` message |
+
+`mute 1` silences the gate signal and stops the bangs, `mute 0` lets them
+through again. Unmuting part way through a pulse waits for the next onset
+rather than opening the gate mid-pulse, and time keeps running while muted,
+so unmuting lands wherever the cycle has got to. `meml.ratioseq~` has the
+same control, sharing the gate logic in `RhythmCore.h`.
 
 `norm <n> <k> <offset>` takes three 0..1 floats and maps them as
 `EuclideanAudioApp::VoiceOperator_` does: `n` snapped to a power of 2 or 3
