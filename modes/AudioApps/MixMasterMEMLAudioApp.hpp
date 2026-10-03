@@ -1,5 +1,5 @@
-#ifndef __MEMLGLITCHAMB_AUDIO_APP_HPP__
-#define __MEMLGLITCHAMB_AUDIO_APP_HPP__
+#ifndef __MIXMASTERMEML_AUDIO_APP_HPP__
+#define __MIXMASTERMEML_AUDIO_APP_HPP__
 
 #include "../../src/memllib/audio/AudioAppBase.hpp"
 #include "../../src/memllib/synth/maximilian.h"
@@ -19,13 +19,13 @@
 #include "GlitchSeqEngine.hpp"
 #include "../../src/memllib/synth/GrainDelayI16.hpp"
 
-static constexpr size_t kMEMLGlitchAmbNSequences = 3;
+static constexpr size_t kMixMasterMEMLNSequences = 3;
 
 // MIDI notes assigned to each sequencer index
-// static constexpr uint8_t kMEMLGlitchAmbSeqNotes[kMEMLGlitchAmbNSequences] = {60};
+// static constexpr uint8_t kMixMasterMEMLSeqNotes[kMixMasterMEMLNSequences] = {60};
 
 template<size_t NPARAMS=105>
-class MEMLGlitchAmbAudioApp : public AudioAppBase<NPARAMS>
+class MixMasterMEMLAudioApp : public AudioAppBase<NPARAMS>
 {
 public:
     static constexpr size_t kN_Params = NPARAMS;
@@ -101,7 +101,7 @@ public:
 
     VoiceSpaceFn<NPARAMS> currentVoiceSpace;
 
-    GlitchSeqEngine<kMEMLGlitchAmbNSequences> seqEngine;
+    GlitchSeqEngine<kMixMasterMEMLNSequences> seqEngine;
 
     queue_t sequencerControlQueue;
     queue_t bpmControlQueue;
@@ -137,7 +137,18 @@ public:
         return count;
     }
 
-    MEMLGlitchAmbAudioApp() : AudioAppBase<NPARAMS>() {
+    // Codec output level up from the 0.55 default (as SaxFX/ChunkyBits): sparse, quiet
+    // material (rests, 10% notes) otherwise comes out low.
+    AudioDriver::codec_config_t GetDriverConfig() const override {
+        return {
+            .mic_input     = false,
+            .line_level    = 3,
+            .mic_gain_dB   = 0,
+            .output_volume = 0.97f
+        };
+    }
+
+    MixMasterMEMLAudioApp() : AudioAppBase<NPARAMS>() {
         queue_init(&sequencerControlQueue, sizeof(int), 1);
         queue_init(&bpmControlQueue, sizeof(float), 1);
         queue_init(&qMIDINoteOn, sizeof(uint8_t)*2, 1);
@@ -379,7 +390,7 @@ public:
             }
         };
         seqEngine.onNoteOff = [this](size_t seqIdx) {
-            // uint8_t note = kMEMLGlitchAmbSeqNotes[seqIdx];
+            // uint8_t note = kMixMasterMEMLSeqNotes[seqIdx];
             // uint8_t midimsg[2] = { note, 0 };
             // queue_try_add(&qMIDINoteOff, &midimsg);
             switch(seqIdx) {
@@ -792,4 +803,4 @@ protected:
 
 };
 
-#endif  // __MEMLGLITCHAMB_AUDIO_APP_HPP__
+#endif  // __MIXMASTERMEML_AUDIO_APP_HPP__

@@ -6,7 +6,7 @@
 #include <cstddef>
 #include <cmath>
 
-// RatioSeqEngine variant for MEMLGlitchAmb. Each sequence splits its cycle into NNOTES
+// RatioSeqEngine variant for MixMasterMEML. Each sequence splits its cycle into NNOTES
 // segments by integer ratios (one note per segment, as in RatioSeqEngine), but instead
 // of an accent pattern every note has its own level, chosen by one parameter: the bottom
 // third of the range is a rest, the middle third low (kLowLevel), the top third full.
