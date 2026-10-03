@@ -21,7 +21,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 BUILD_DIR="${REPO_DIR}/build"
-FQBN="rp2040:rp2040:memlnaut"
+# The board's default flash layout is "16MB (no FS)", which leaves LittleFS
+# unmountable and silently drops every flash-persisted setting (input source,
+# dislike mode, CC numbers...). Always build with a filesystem partition.
+FQBN="rp2040:rp2040:memlnaut:flash=16777216_1048576"
 
 UPLOAD=0
 PORT=""
