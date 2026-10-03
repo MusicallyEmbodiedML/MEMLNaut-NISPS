@@ -36,7 +36,8 @@
 // #define MODE_CHUNKYBITS
 // #define MODE_BUNTY
 // #define MODE_ELYSIAMORFS
-#define MODE_MEMLCELIUM
+// #define MODE_MEMLCELIUM
+#define MODE_MEMLGLITCHAMB
 // #define MODE_D50
 // #define MODE_TR6S
 // #define MODE_TR8S
@@ -100,6 +101,10 @@
 #ifdef MODE_MEMLCELIUM
   #include "modes/MEMLNautModeMEMLCelium.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeMEMLCelium
+#endif
+#ifdef MODE_MEMLGLITCHAMB
+  #include "modes/MEMLNautModeMEMLGlitchAmb.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeMEMLGlitchAmb
 #endif
 #ifdef MODE_D50
   #include "modes/MEMLNautModeD50.hpp"
