@@ -37,9 +37,13 @@ public:
         interface.setModeInfo("synthosorium", "Synthosorium");
         interfacePtr = make_non_owning(interface);
 
-        // bindInterface() just sized the bar graph for the (unused) default
-        // input source's 3 joystick axes — we always drive all 16 CC inputs.
-        if (interface.nnInputsGraphView) interface.nnInputsGraphView->setNumDisplayBars(kN_InputParams);
+        // bindInterface() just set up the inputs screen for the (unused) default
+        // input source's joystick axes — we always drive all 16 CC inputs.
+        if (interface.nnInputsGraphView) {
+            std::vector<String> labels;
+            for (size_t i = 0; i < kN_InputParams; i++) labels.push_back(String(i + 1));
+            interface.nnInputsGraphView->setSource("MIDI CC 1-16", labels, false);
+        }
 
         // Override whatever assembleInputs() computed from the (unused) default
         // input source with the live MIDI CC1-16 values every cycle.
