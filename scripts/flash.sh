@@ -83,7 +83,8 @@ for e in entries:
 find_bootsel_drive() {
     for base in /media/"$USER" /run/media/"$USER" /media /mnt; do
         [[ -d "${base}" ]] || continue
-        find "${base}" -maxdepth 2 -iname "RPI-RP2" -type d 2>/dev/null | head -1
+        # RP2040 boards mount as RPI-RP2, RP2350 boards (MEMLNaut) as RP2350.
+        find "${base}" -maxdepth 2 \( -iname "RPI-RP2" -o -iname "RP2350" \) -type d 2>/dev/null | head -1
     done | grep -v "^$" | head -1 || true
 }
 
