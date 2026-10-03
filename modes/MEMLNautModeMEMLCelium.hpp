@@ -115,6 +115,7 @@ public:
         std::shared_ptr<BlockSelectView> focusView = std::make_shared<BlockSelectView>(
             "Focus", TFT_DARKGREY, 6, 80, 70, TFT_WHITE,
             std::vector<String>{"Seq", "Synth", "Env", "Voice 1", "Voice 2", "Voice 3"}, TFT_GREENYELLOW, 2);
+        focusView->setAccent(TFT_CYAN);
 
         focusView->SetOnSelectCallback([this, focusView, updateActiveDims](size_t id) {
             size_t groupIdx = id - 1;
