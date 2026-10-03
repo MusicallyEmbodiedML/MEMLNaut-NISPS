@@ -9,6 +9,7 @@
 #include "../src/memllib/audio/FocusManager.hpp"
 #include "../src/memllib/PicoDefs.hpp"
 #include "MEMLNautMode.hpp"
+#include "../MachineListeningMixin.hpp"
 #include <memory>
 #include <array>
 
@@ -18,7 +19,6 @@ public:
     constexpr static size_t kDesiredSampleRate = 48000;
 
     inline static MEMLCeliumAudioApp<> audioAppMEMLCelium;
-    std::array<String, MEMLCeliumAudioApp<>::nVoiceSpaces> voiceSpaceList;
 
     // Output width fixed at compile time -> static-memory mapping network.
     using InterfaceRL_t = InterfaceRL<MEMLCeliumAudioApp<>::kN_Params>;
@@ -28,10 +28,13 @@ public:
     bool sequencerPlaying = false;
 
     FocusManager<MEMLCeliumAudioApp<>::kN_Params, 6> focusManager;
+    MachineListeningMixin mlMixin;
 
 
     void setupInterface() {
-        interface.setup(kN_InputParams, MEMLCeliumAudioApp<>::kN_Params);
+        interface.setup(kN_InputParams, MEMLCeliumAudioApp<>::kN_Params, false);  // no Messages screen
+        // RL screen: label the outputs by section (see kParamGroupMask for the layout).
+        interface.nnOutputsGraphView->setGroups({0, 21, 44, 63}, {"Seq", "V1", "V2", "V3"});
 
         interface.setRVX1Override([this](float value) {
             float bpm = 30.f + value * 170.f;
@@ -71,7 +74,7 @@ public:
 
     void setupAudio(float sample_rate) {
         audioAppMEMLCelium.Setup(sample_rate, interfacePtr);
-        voiceSpaceList = audioAppMEMLCelium.getVoiceSpaceNames();
+        mlMixin.setup(interface);
     }
 
     __force_inline void loop() {
@@ -135,17 +138,6 @@ public:
         });
         MEMLNaut::Instance()->disp->InsertViewAfter(focusView, voiceEnableView);
 
-        std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
-        voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
-
-        MEMLNaut::Instance()->disp->InsertViewAfter(focusView, voiceSpaceSelectView);
-        size_t nVS = audioAppMEMLCelium.getPopulatedVoiceSpaceCount();
-        voiceSpaceSelectView->setOptions(std::span<String>(voiceSpaceList.data(), nVS));
-        voiceSpaceSelectView->setNewVoiceCallback(
-            [this](size_t idx) {
-                audioAppMEMLCelium.setVoiceSpace(idx);
-            });
-
     //   std::shared_ptr<XYPadView> noteTrigView = std::make_shared<XYPadView>("Play", TFT_SILVER);
 
     //   static bool is_playing_note = false;
@@ -170,12 +162,11 @@ public:
     //         is_playing_note = false;
     //   });
     //   MEMLNaut::Instance()->disp->AddView(noteTrigView);
-        interface.addInputSourceView();
+        interface.addInputSourceView(false);  // no MIDI CC Out screen
     };
 
-    inline void processAnalysisParams() {}
-
-    void analyse(stereosample_t) {}
+    __force_inline void analyse(stereosample_t x)    { mlMixin.analyse(x); }
+    __force_inline void processAnalysisParams()       { mlMixin.processAnalysisParams(); }
 
     AudioDriver::codec_config_t getCodecConfig() { return audioAppMEMLCelium.GetDriverConfig(); }
 
