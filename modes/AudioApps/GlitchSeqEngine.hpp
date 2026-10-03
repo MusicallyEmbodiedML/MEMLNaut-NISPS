@@ -97,23 +97,31 @@ public:
     // beats), NNOTES levels (rest / low / full).
     template<size_t NPARAMS>
     void updateParams(const std::array<float, NPARAMS>& params, size_t startIdx) {
+        for (size_t i = 0; i < NSEQUENCES; i++)
+            updateSeqParams(i, params, startIdx + i * kParamsPerSeq);
+    }
+
+    // One sequence's kParamsPerSeq params from startIdx (so a sequence's params needn't
+    // sit next to the others'): NNOTES ratios (1..3), speed (x1/2/4/8 per bar), offset
+    // (whole beats), NNOTES levels (rest / low / full).
+    template<size_t NPARAMS>
+    void updateSeqParams(size_t seqIdx, const std::array<float, NPARAMS>& params, size_t startIdx) {
+        auto& v = states[seqIdx];
         size_t p = startIdx;
-        for (auto& v : states) {
-            float sum = 0.f;
-            for (size_t i = 0; i < NNOTES; i++) {
-                v.ratios[i] = static_cast<float>(static_cast<int>(params[p++] * 3.f)) + 1.f;
-                sum += v.ratios[i];
-            }
-            v.ratioSum = sum;
+        float sum = 0.f;
+        for (size_t i = 0; i < NNOTES; i++) {
+            v.ratios[i] = static_cast<float>(static_cast<int>(params[p++] * 3.f)) + 1.f;
+            sum += v.ratios[i];
+        }
+        v.ratioSum = sum;
 
-            static constexpr float muls[4] = {1.f, 2.f, 4.f, 8.f};
-            v.phasorMul = muls[static_cast<int>(params[p++] * 3.999999f)];
-            v.phaseOffset = static_cast<int>(params[p++] * timeSigBeats) / timeSigBeats;
+        static constexpr float muls[4] = {1.f, 2.f, 4.f, 8.f};
+        v.phasorMul = muls[static_cast<int>(params[p++] * 3.999999f)];
+        v.phaseOffset = static_cast<int>(params[p++] * timeSigBeats) / timeSigBeats;
 
-            for (size_t i = 0; i < NNOTES; i++) {
-                const int band = static_cast<int>(params[p++] * 2.999999f);  // 0, 1, 2
-                v.levels[i] = band == 0 ? 0.f : (band == 1 ? kLowLevel : 1.f);
-            }
+        for (size_t i = 0; i < NNOTES; i++) {
+            const int band = static_cast<int>(params[p++] * 2.999999f);  // 0, 1, 2
+            v.levels[i] = band == 0 ? 0.f : (band == 1 ? kLowLevel : 1.f);
         }
     }
 

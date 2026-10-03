@@ -19,12 +19,12 @@
 #include "GlitchSeqEngine.hpp"
 #include "../../src/memllib/synth/GrainDelayI16.hpp"
 
-static constexpr size_t kMixMasterMEMLNSequences = 3;
+static constexpr size_t kMixMasterMEMLNSequences = 4;  // 3 drum voices + bass
 
 // MIDI notes assigned to each sequencer index
 // static constexpr uint8_t kMixMasterMEMLSeqNotes[kMixMasterMEMLNSequences] = {60};
 
-template<size_t NPARAMS=105>
+template<size_t NPARAMS=122>
 class MixMasterMEMLAudioApp : public AudioAppBase<NPARAMS>
 {
 public:
@@ -42,6 +42,7 @@ public:
     static constexpr uint32_t kFocusV2  = (1u << 5);
     static constexpr uint32_t kFocusFX  = (1u << 6);
     static constexpr uint32_t kFocusArp = (1u << 7);
+    static constexpr uint32_t kFocusBass = (1u << 8);
 
     // Per-param group membership
     static constexpr std::array<uint32_t, NPARAMS> kParamGroupMask = {
@@ -95,6 +96,15 @@ public:
         // euclid steps, pitch spread, pitch, attack, release, level, euclid rotation (13)
         kFocusArp, kFocusArp, kFocusArp, kFocusArp, kFocusArp, kFocusArp, kFocusArp,
         kFocusArp, kFocusArp, kFocusArp, kFocusArp, kFocusArp, kFocusArp,
+        // 105-112: bass sequencer (as the drum voices) — 3 ratios, speed, offset, 3 levels
+        kFocusSeq|kFocusBass, kFocusSeq|kFocusBass, kFocusSeq|kFocusBass, kFocusSeq|kFocusBass,
+        kFocusSeq|kFocusBass, kFocusSeq|kFocusBass, kFocusSeq|kFocusBass, kFocusSeq|kFocusBass,
+        // 113-119: bass sound — formant, bandwidth, attack, decay, sustain, release, level
+        kFocusSyn|kFocusBass, kFocusSyn|kFocusBass,
+        kFocusEnv|kFocusBass, kFocusEnv|kFocusBass, kFocusEnv|kFocusBass, kFocusEnv|kFocusBass,
+        kFocusBass,
+        // 120-121: bass line — slope, bend (4-note pitch curve)
+        kFocusBass, kFocusBass,
     };
 
     std::array<VoiceSpace<NPARAMS>, nVoiceSpaces> voiceSpaces;
@@ -109,11 +119,13 @@ public:
     // Per-voice enable bits (bit 0 = V0, 1 = V1, 2 = V2). Set by the enable screen on the
     // control core, read on the audio core — all three on by default.
     // Enable bits (Enable screen; set on the control core, read on the audio core):
-    // 0-2 voices V1-V3, 3 arp, 4 sine shaper, 5 grain delay (off = dry, buffer still fed).
+    // 0-2 voices V1-V3, 3 arp, 4 bass, 5 sine shaper, 6 grain delay (off = dry, buffer
+    // still fed).
     static constexpr uint32_t kEnableArp = 1u << 3;
-    static constexpr uint32_t kEnableShaper = 1u << 4;
-    static constexpr uint32_t kEnableDelay = 1u << 5;
-    volatile uint32_t voiceEnableMask_ = 0b111111;
+    static constexpr uint32_t kEnableBass = 1u << 4;
+    static constexpr uint32_t kEnableShaper = 1u << 5;
+    static constexpr uint32_t kEnableDelay = 1u << 6;
+    volatile uint32_t voiceEnableMask_ = 0b1111111;
 
     std::array<String, nVoiceSpaces> getVoiceSpaceNames() {
         std::array<String, nVoiceSpaces> names;
@@ -230,7 +242,7 @@ public:
 
 
 
-        v0 = v0 * envval;
+        v0 = v0 * envval * kV0Gain * mixGain_[kMixV1];
         feedback = v0 * feedbackGain;
 
         //v1
@@ -257,7 +269,7 @@ public:
 
         v1 = ((1.0 - rmGain) * v1) + (rm * rmGain);
 
-        v1 = v1 * v1Envval;
+        v1 = v1 * v1Envval * mixGain_[kMixV2];
 
         //v2 — hihat-biased PAF voice
         float v2Envval = v2AmpEnv.play();
@@ -278,7 +290,7 @@ public:
         float v2 = v2p0 + v2p1 + v2p2;
         const float v2rm = v2p0 * v2p1 * v2p2;
         v2 = ((1.f - v2rmGain) * v2) + (v2rm * v2rmGain);
-        v2 = v2 * v2Envval;
+        v2 = v2 * v2Envval * mixGain_[kMixV3];
 
         if (!(voiceEnableMask_ & (1u << 0))) v0 = 0.f;
         if (!(voiceEnableMask_ & (1u << 1))) v1 = 0.f;
@@ -292,17 +304,27 @@ public:
             mix = mix + (shape * sineShapeMix);
         }
 
+
         mix = lowBoost.play(mix);
         mix = midBoost.play(mix);    
         mix = highBoost.play(mix);
-        if (voiceEnableMask_ & kEnableArp) mix += arpOut;  // into the grain delay with the rest
+        if (voiceEnableMask_ & kEnableArp) mix += arpOut * mixGain_[kMixArp];  // into the grain delay with the rest
 
         
         // Master grain delay, wet/dry.
         const stereosample_t wet = masterGrain_.processStereo(mix);
         const float wetMix = (voiceEnableMask_ & kEnableDelay) ? grainMix_ : 0.f;
         const float dry = mix * (1.f - wetMix);
-        stereosample_t ret { tanhf(dry + wet.L * wetMix), tanhf(dry + wet.R * wetMix) };
+        // Bass: added after the delay (and so after the shaper and EQ), always dry: it
+        // stays clean and at full level whatever the delay's wet/dry is doing.
+        bassPaf_.play(x1, 1, bassFreq_, bassFreq_ * bassCf_, bassFreq_ * bassBw_, 0.f, 0.f, 0.f, false);
+        const float bass = (voiceEnableMask_ & kEnableBass) ? *x1 * bassEnv_.play() * bassLevel_ * mixGain_[kMixBass] : (bassEnv_.play(), 0.f);
+
+        // Mixer: the Delay fader trims the wet return only; Master drives the final tanh.
+        const float wetGain = wetMix * mixGain_[kMixDelay];
+        const float master = mixGain_[kMixMaster];
+        stereosample_t ret { tanhf((dry + wet.L * wetGain + bass) * master),
+                             tanhf((dry + wet.R * wetGain + bass) * master) };
         return ret;
     }
 
@@ -357,6 +379,11 @@ public:
         highBoost.set(maxiBiquad::PEAK, 5000.f, 0.707f, 6.f);
 
         masterGrain_.setup(sample_rate);
+        bassPaf_.init();
+        bassPaf_.setsr(maxiSettings::getSampleRate(), 1);
+        for (size_t i = 0; i < kNumBassNotes; i++) bassFreqs_[i] = mtof(kBassRoot + 12);  // C2 until params arrive
+        bassFreq_ = bassFreqs_[0];
+        bassEnv_.setup(20.f, 300.f, 0.4f, 300.f, sampleRatef);
         for (int v = 0; v < 2; v++) {
             arpVoices_[v].setup(sample_rate);
             arpVoices_[v].fillWithSaw(mtof(kArpRoot));
@@ -387,6 +414,11 @@ public:
                     v2AmpEnv.trigger(noteVel);
                     v2PitchEnv.trigger(1.0);
                     break;
+                case 3:  // bass: next pitch from the list, in order
+                    bassFreq_ = bassFreqs_[bassNoteIdx_];
+                    bassNoteIdx_ = (bassNoteIdx_ + 1) % kNumBassNotes;
+                    bassEnv_.trigger(noteVel);
+                    break;
             }
         };
         seqEngine.onNoteOff = [this](size_t seqIdx) {
@@ -406,11 +438,15 @@ public:
                     v2AmpEnv.release();
                     v2PitchEnv.release();
                     break;
+                case 3:
+                    bassEnv_.release();
+                    break;
             }
         };
 
         voiceSpaces[0] = {"Default", [this](const std::array<float, NPARAMS>& params) {
-            seqEngine.updateParams(params, 0);
+            for (size_t v = 0; v < 3; v++)  // drum voices; the bass sequence is at the end
+                seqEngine.updateSeqParams(v, params, v * decltype(seqEngine)::kParamsPerSeq);
 
             size_t paramIdx = 3 * decltype(seqEngine)::kParamsPerSeq;  // 24: after the sequencer
             auto sqParam = [&]() { const float p = params[paramIdx++]; return p * p; };
@@ -559,9 +595,44 @@ public:
                 arpVoices_[v].setPitch(pitch);
                 arpEnvs_[v].setup(attack, release, 0.f, 1.f, sampleRatef);
             }
-            arpLevel_ = 0.15f + params[paramIdx++] * 1.05f;
+            arpLevel_ = 0.1f + params[paramIdx++] * 0.55f;  // ~0.03-0.2 RMS when active
             const int rot = std::min(n - 1, static_cast<int>(params[paramIdx++] * n));
             arpEuclid_ = (static_cast<uint32_t>(n) << 16) | (static_cast<uint32_t>(k) << 8) | static_cast<uint32_t>(rot);
+
+            // Bass: rhythm and levels from sequence 3, exactly like the drum voices.
+            seqEngine.updateSeqParams(3, params, paramIdx);
+            paramIdx += decltype(seqEngine)::kParamsPerSeq;
+            // One PAF operator. Formant centre and bandwidth scale with the note, so all
+            // pitches share a timbre. Centre 2-6x the fundamental and bandwidth 1-5x keep it
+            // harmonically rich: at 33-131Hz a near-sine is mostly inaudible on small
+            // speakers and just fills the output saturation. Soft attack (no click),
+            // decay/release from short to long.
+            bassCf_ = 2.f + params[paramIdx++] * 4.f;
+            bassBw_ = 1.f + sqParam() * 4.f;
+            {
+                const float attack = 5.f + sqParam() * 55.f;
+                const float decay = 20.f + sqParam() * 1980.f;
+                const float sustain = params[paramIdx++] * 0.8f;
+                const float release = 20.f + sqParam() * 2980.f;
+                bassEnv_.setup(attack, decay, sustain, release, sampleRatef);
+            }
+            bassLevel_ = 0.5f + params[paramIdx++] * 0.75f;  // ~0.08-0.2 RMS when active
+
+            // Bass line: 4 notes from a curve f(x) = a*x + b*4x(1-x), sampled at x = 0, 1/3,
+            // 2/3, 1. a = slope (falling..rising), b = bend (dip..arch). f is scaled to
+            // scale steps around C2 and clamped to C1..C3; f(0) = 0, so the line starts on
+            // C2. Pentatonic C D E G A: the same notes as the arp's A minor pentatonic.
+            {
+                const float a = params[paramIdx++] * 2.f - 1.f;
+                const float b = params[paramIdx++] * 2.f - 1.f;
+                for (size_t i = 0; i < kNumBassNotes; i++) {
+                    const float x = static_cast<float>(i) / (kNumBassNotes - 1);
+                    const float f = a * x + b * 4.f * x * (1.f - x);
+                    const int deg = std::max(0, std::min(kBassMaxDeg,
+                        kBassCentreDeg + static_cast<int>(lroundf(f * kBassStepsPerUnit))));
+                    bassFreqs_[i] = mtof(kBassRoot + 12 * (deg / 5) + kBassScale[deg % 5]);
+                }
+            }
         }};
         currentVoiceSpace = voiceSpaces[0].mappingFunction;
     }
@@ -631,6 +702,34 @@ protected:
     float grainMix_ = 0.f;
     float bpm_ = 120.f;        // matches seqEngine's initial tempo
     float delayBeats_ = 0.5f;  // grain delay time as a beat division
+
+    // Mix balance, set from measured RMS (typical active levels): voice 1 ~0.03-0.1,
+    // arp ~0.03-0.2, bass ~0.08-0.2. Actual RMS also depends on density and envelopes.
+    static constexpr float kV0Gain = 0.4f;  // voice 1 has no level param
+
+public:
+    // Mixer screen trims (x0..x2, unity 1), on top of the NN-set levels. Written by the
+    // touch UI on core 0, read per sample here.
+    enum MixChannel : size_t { kMixV1 = 0, kMixV2, kMixV3, kMixArp, kMixBass, kMixDelay, kMixMaster, kNumMix };
+    volatile float mixGain_[kNumMix] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+protected:
+
+    // ─── Bass ─────────────────────────────────────────────────────────────────────
+    // The bass line: kNumBassNotes pitches (set from the curve params), taken in turn.
+    static constexpr size_t kNumBassNotes = 4;
+    static constexpr uint8_t kBassRoot = 24;                    // C1
+    static constexpr uint8_t kBassScale[5] = {0, 2, 4, 7, 9};   // C major pentatonic
+    static constexpr int kBassCentreDeg = 5;                    // C2
+    static constexpr int kBassMaxDeg = 10;                      // C3
+    static constexpr float kBassStepsPerUnit = 4.f;
+    maxiPAFOperator bassPaf_;
+    ADSRLite bassEnv_;
+    float bassFreqs_[kNumBassNotes] = {};
+    float bassFreq_ = 32.7f;
+    size_t bassNoteIdx_ = 0;
+    float bassCf_ = 1.f;
+    float bassBw_ = 1.f;
+    float bassLevel_ = 0.f;
 
     // ─── Arp ──────────────────────────────────────────────────────────────────────
     // A ChunkyBits-style voice: a grain delay whose (frozen) buffer holds one waveform
