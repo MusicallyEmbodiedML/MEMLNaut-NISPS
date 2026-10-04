@@ -44,6 +44,7 @@ public:
 
         interface.bindInterface(InterfaceRLBase::INPUT_MODES::JOYSTICK, true);
         interface.setModeInfo("mixmastermeml", "MixMasterMEML");
+        interface.setTrainOnDemand(true);  // settle when the likes are learned (see InterfaceRL)
         interfacePtr = make_non_owning(interface);
 
         focusManager.setGroupName(0, "Seq");
