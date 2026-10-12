@@ -37,6 +37,7 @@
 // #define MODE_BUNTY
 // #define MODE_ELYSIAMORFS
 // #define MODE_MEMLCELIUM
+#define MODE_MIXMASTERMEML
 // #define MODE_D50
 // #define MODE_TR6S
 // #define MODE_TR8S
@@ -46,6 +47,7 @@
 // #define MODE_MICROQ
 // #define MODE_ERICA_FBANK
 // #define MODE_STEAMPIPE
+// #define MODE_SYNTHOSORIUM
 
 #include "modes/MEMLNautMode.hpp"
 #ifdef MODE_PAFSYNTH
@@ -100,6 +102,10 @@
   #include "modes/MEMLNautModeMEMLCelium.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeMEMLCelium
 #endif
+#ifdef MODE_MIXMASTERMEML
+  #include "modes/MEMLNautModeMixMasterMEML.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeMixMasterMEML
+#endif
 #ifdef MODE_D50
   #include "modes/MEMLNautModeD50.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeD50
@@ -135,6 +141,10 @@
 #ifdef MODE_STEAMPIPE
   #include "modes/MEMLNautModeSteampipe.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeSteampipe
+#endif
+#ifdef MODE_SYNTHOSORIUM
+  #include "modes/MEMLNautModeSynthosorium.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeSynthosorium
 #endif
 
 MEMLNAUT_MODE_TYPE AUDIO_MEM MEMLNautModeHub;

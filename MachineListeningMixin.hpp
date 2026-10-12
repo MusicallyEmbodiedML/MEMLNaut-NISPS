@@ -13,6 +13,8 @@ public:
     void setup(InterfaceRLBase& iface) {
         iface_ = &iface;
         iface.setHasMachineListening(true);
+        // Labels for the NN Inputs screen, in XiasriAnalysis::parameters_t order.
+        iface.setMLInputLabels({"Ptch", "Aper", "Enrg", "Atk", "Brt", "EnCr"});
         mlAnalysis_.ReinitFilters();
     }
     __force_inline void analyse(stereosample_t x) {

@@ -1,0 +1,11 @@
+{
+	"name" : "nisps",
+	"displayname" : "nisps",
+	"version" : "0.1.0",
+	"author" : "MEML",
+	"description" : "NISPS: neural interactive shaping of parameter spaces - a like/dislike-trained mapper from N inputs to M outputs.",
+	"tags" : [ "machine learning", "mapping", "reinforcement learning" ],
+	"max_version_min" : "8.5",
+	"os" : { "macintosh" : { "platform" : [ "x64", "aarch64" ], "min_version" : "10.13" },
+	         "windows" : { "platform" : [ "x64" ], "min_version" : "10" } }
+}
