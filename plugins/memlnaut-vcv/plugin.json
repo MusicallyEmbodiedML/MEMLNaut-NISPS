@@ -1,0 +1,23 @@
+{
+  "slug": "MEMLNaut",
+  "name": "MEMLNaut",
+  "version": "2.0.0",
+  "license": "MPL-2.0",
+  "brand": "MEML",
+  "author": "Musically Embodied Machine Learning",
+  "authorEmail": "",
+  "authorUrl": "",
+  "pluginUrl": "",
+  "manualUrl": "",
+  "sourceUrl": "https://github.com/MusicallyEmbodiedML/MEMLNaut-NISPS",
+  "donateUrl": "",
+  "changelogUrl": "",
+  "modules": [
+    {
+      "slug": "MEMLNaut",
+      "name": "MEMLNaut",
+      "description": "The MEMLNaut's NISPS mapper: a like/dislike-trained neural network from 4 CV inputs to 32 CV outputs, with the hardware's screen",
+      "tags": ["Random", "Controller", "Polyphonic"]
+    }
+  ]
+}

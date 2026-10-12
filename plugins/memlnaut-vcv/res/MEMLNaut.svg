@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 24 HP. Shapes only: labels are drawn by PanelLabels (src/Panel.hpp) to the same layout. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="121.92mm" height="128.5mm" viewBox="0 0 121.92 128.5">
+  <rect x="0" y="0" width="121.92" height="128.5" fill="#1d2228"/>
+  <rect x="0" y="0" width="121.92" height="1.2" fill="#2f3741"/>
+  <rect x="0" y="127.3" width="121.92" height="1.2" fill="#2f3741"/>
+  <!-- screen bezel -->
+  <rect x="2.6" y="9.6" width="68.8" height="52.3" rx="1.6" fill="#0a0c0f" stroke="#39424d" stroke-width="0.35"/>
+  <!-- gestures: buttons over gate inputs -->
+  <rect x="3.2" y="64.2" width="67.6" height="23.6" rx="1.4" fill="#232a31"/>
+  <line x1="5" y1="77.2" x2="69" y2="77.2" stroke="#323b45" stroke-width="0.3"/>
+  <!-- knobs, CV inputs -->
+  <rect x="3.2" y="89.6" width="67.6" height="13.8" rx="1.4" fill="#232a31"/>
+  <rect x="3.2" y="105.6" width="67.6" height="14.6" rx="1.4" fill="#232a31"/>
+  <!-- outputs block -->
+  <rect x="74" y="10" width="44.2" height="91" rx="1.6" fill="#141a1f" stroke="#2c3d33" stroke-width="0.35"/>
+  <rect x="74" y="104.2" width="44.2" height="16" rx="1.4" fill="#141a1f" stroke="#2c3d33" stroke-width="0.35"/>
+</svg>

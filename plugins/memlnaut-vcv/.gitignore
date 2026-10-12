@@ -1,0 +1,6 @@
+build/
+build-rack/
+dist/
+plugin.so
+plugin.dylib
+plugin.dll
