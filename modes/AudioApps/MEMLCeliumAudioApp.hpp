@@ -96,6 +96,10 @@ public:
     queue_t sequencerControlQueue;
     queue_t bpmControlQueue;
 
+    // Per-voice enable bits (bit 0 = V0, 1 = V1, 2 = V2). Set by the enable screen on the
+    // control core, read on the audio core — all three on by default.
+    volatile uint32_t voiceEnableMask_ = 0b111;
+
     std::array<String, nVoiceSpaces> getVoiceSpaceNames() {
         std::array<String, nVoiceSpaces> names;
         for(size_t i=0; i < voiceSpaces.size(); i++) {
@@ -217,6 +221,10 @@ public:
         const float v2rm = v2p0 * v2p1 * v2p2;
         v2 = ((1.f - v2rmGain) * v2) + (v2rm * v2rmGain);
         v2 = v2 * v2Envval;
+
+        if (!(voiceEnableMask_ & (1u << 0))) v0 = 0.f;
+        if (!(voiceEnableMask_ & (1u << 1))) v1 = 0.f;
+        if (!(voiceEnableMask_ & (1u << 2))) v2 = 0.f;
 
         float mix = v0 + v1 + v2;
 

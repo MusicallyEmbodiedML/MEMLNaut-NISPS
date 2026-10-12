@@ -30,10 +30,11 @@ public:
         interface.setRVX1Override([this](float value) {
             audioAppChunkyBits.setFeedbackFactorQueued(value * 2.f);
         });
-        interface.inputInjectionHook = [this](std::vector<float>& inputs) {
-            const size_t idx = interface.getActiveInputCount();
-            if (idx < inputs.size()) inputs[idx] = envelopeValue_;
-        };
+        // Envelope→NN-input feedback disabled: the AR envelope no longer feeds back into
+        // the network inputs. With no hook, that slot falls back to the unused-input pad.
+        // NOTE: the env path is left wired but inert for easy re-enable — the audio core
+        // still computes envVal_ and pushes it via envQueue, and loopCore0() still drains
+        // it into envelopeValue_ (now unused). To restore feedback, re-add the hook here.
         interface.bindInterface(MEMLNAUT_INPUT_MODE, JOYSTICK_IS_4D);
         interface.setModeInfo("chunkybits", "ChunkyBits");
         interfacePtr = make_non_owning(interface);

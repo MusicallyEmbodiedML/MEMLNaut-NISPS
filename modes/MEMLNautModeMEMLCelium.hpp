@@ -54,7 +54,6 @@ public:
         };
 
         MEMLNaut::Instance()->setTogA2Callback([this](bool state) {
-            Serial.println(state ? "TogA2 ON" : "TogA2 OFF");
             if (state) {
                 sequencerPlaying = !sequencerPlaying;
                 queue_try_add(&audioAppMEMLCelium.sequencerControlQueue, &sequencerPlaying);
@@ -122,6 +121,19 @@ public:
             updateActiveDims();
         });
         MEMLNaut::Instance()->disp->InsertViewAfter(interface.nnOutputsGraphView, focusView);
+
+        // Voice enable screen — toggle each of the three voices on/off. Highlighted = enabled.
+        // All three start enabled to match voiceEnableMask_'s default (0b111).
+        std::shared_ptr<BlockSelectView> voiceEnableView = std::make_shared<BlockSelectView>(
+            "Enable", TFT_DARKGREEN, 3, 80, 70, TFT_WHITE,
+            std::vector<String>{"Voice 1", "Voice 2", "Voice 3"}, TFT_GREEN, 2);
+        for (size_t i = 0; i < 3; i++) voiceEnableView->setAltColour(i, true);
+        voiceEnableView->SetOnSelectCallback([this, voiceEnableView](size_t id) {
+            size_t v = id - 1;
+            audioAppMEMLCelium.voiceEnableMask_ ^= (1u << v);
+            voiceEnableView->toggleAlt(v);
+        });
+        MEMLNaut::Instance()->disp->InsertViewAfter(focusView, voiceEnableView);
 
         std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
         voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
