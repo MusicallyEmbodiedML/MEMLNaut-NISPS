@@ -108,8 +108,8 @@ def basic_tab():
     p.comment(275, 188, 150, "store disliked pair")
     p.comment(275, 216, 150, "scramble the network")
     p.comment(275, 244, 150, "forget everything")
-    p.comment(275, 272, 170, "hold: morph weights (learning paused)")
-    p.comment(275, 300, 150, "release the jolt")
+    p.comment(275, 272, 170, "jolt: new sounds in the gaps")
+    p.comment(275, 300, 150, "re-arm the jolt")
 
     # ---- attributes
     p.comment(450, 135, 250, "attributes")

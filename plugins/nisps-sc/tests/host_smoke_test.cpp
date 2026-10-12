@@ -362,6 +362,86 @@ int main() {
                     (double)err, passes);
     }
 
+    // Firmware-sync gestures: jolt plants pseudo-likes, every dislike mode leaves its
+    // targets to retire on time, drag stores the held sound, the padded net and the
+    // exploration noise keep outputs in range, and focus leaves frozen outputs alone.
+    bool gesturesOk = true;
+    {
+        NISPSCore g(4, 32, 10);
+        if (g.netInputs() != 10 || g.getInput().size() != 10) gesturesOk = false;
+        auto tick = [&](int n) {
+            for (int i = 0; i < n; ++i) {
+                g.advanceClock(5.0);
+                g.process();
+                for (float v : g.getAction())
+                    if (!std::isfinite(v) || v < 0.f || v > 1.f) gesturesOk = false;
+            }
+        };
+        g.setInputs({ 0.2f, 0.3f, 0.4f, 0.5f });
+        tick(10);
+        g.like();
+        std::vector<NISPSCore::MemoryPoint> pts;
+        g.jolt();
+        g.memoryPoints(pts);
+        size_t jolts = 0;
+        for (auto& p : pts) jolts += p.kind == NISPSCore::MemoryPoint::Kind::JOLT;
+        if (jolts != 8) gesturesOk = false;
+        tick(200);
+
+        for (int m = 0; m < static_cast<int>(NISPSCore::DislikeMode::COUNT); ++m) {
+            g.setDislikeMode(static_cast<NISPSCore::DislikeMode>(m));
+            g.setInputs({ 0.9f, 0.1f, 0.8f, 0.2f });
+            tick(5);
+            const unsigned long before = g.lastEvent().serial;
+            g.dislike();
+            if (g.lastEvent().serial == before) gesturesOk = false; // every 'no' reports
+            tick(5);
+            g.dislike(); // ESCALATE's second stage
+            tick(1000);  // 5 s: every target has retired by now (4 s lifetime)
+            if (m != 0 && g.dislikeCount() != 0) gesturesOk = false;
+        }
+
+        g.setNoiseLevel(1.f);
+        std::vector<float> a0 = g.getAction();
+        tick(400);
+        if (g.getAction() == a0) gesturesOk = false; // noise moves the sound on a still input
+        g.dislike();                                  // jumps the noise
+        tick(10);
+
+        g.setNoiseLevel(0.f);
+        const size_t likesBefore = g.likeCount();
+        g.setInputs({ 0.6f, 0.6f, 0.6f, 0.6f });
+        tick(2);
+        g.startDrag();
+        const std::vector<float> held = g.getAction();
+        g.setInputs({ 0.1f, 0.9f, 0.1f, 0.9f });
+        tick(5);
+        if (g.getAction() != held) gesturesOk = false; // dragging holds the sound
+        g.endDrag();
+        if (g.likeCount() != likesBefore + 1 && g.likeCount() != likesBefore) gesturesOk = false;
+        if (g.lastEvent().action != "drop") gesturesOk = false;
+
+        std::vector<bool> focus(32, false);
+        focus[0] = true;
+        g.setActiveDims(focus);
+        g.setDislikeMode(NISPSCore::DislikeMode::REROLL);
+        tick(2);
+        const std::vector<float> beforeNo = g.getAction();
+        g.dislike();
+        tick(100);
+        float frozenMove = 0.f;
+        for (size_t j = 1; j < 32; ++j) frozenMove = std::max(frozenMove, std::fabs(g.getAction()[j] - beforeNo[j]));
+        // Reported, not checked: frozen outputs share the net, so training on output 0
+        // nudges them too. On the hardware the mode's FocusManager holds them after the
+        // net; the engine alone only keeps the gesture's targets off them.
+
+        g.setTrainOnDemand(true);
+        tick(2000);
+        g.setTrainOnDemand(false);
+        std::printf("Firmware gestures:  %s (%zu likes, %zu dislikes, frozen moved %.3f)\n",
+                    gesturesOk ? "PASS" : "FAIL", g.likeCount(), g.dislikeCount(), (double)frozenMove);
+    }
+
     const bool roundTripOk = testStateRoundTrip();
     const bool flatOk = testFlatRoundTrip();
 
@@ -369,5 +449,5 @@ int main() {
     std::printf("Learning check:     %s (final should exceed initial; stochastic, non-fatal if borderline)\n",
                 (finalScore > initialScore) ? "PASS" : "INCONCLUSIVE");
 
-    return (rangeOk && roundTripOk && flatOk && errorOk) ? 0 : 1;
+    return (rangeOk && roundTripOk && flatOk && errorOk && gesturesOk) ? 0 : 1;
 }

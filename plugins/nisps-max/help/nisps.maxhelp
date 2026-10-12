@@ -387,7 +387,7 @@
           170.0,
           20.0
          ],
-         "text": "hold: morph weights (learning paused)"
+         "text": "jolt: new sounds in the gaps"
         }
        },
        {
@@ -402,7 +402,7 @@
           150.0,
           20.0
          ],
-         "text": "release the jolt"
+         "text": "re-arm the jolt"
         }
        },
        {

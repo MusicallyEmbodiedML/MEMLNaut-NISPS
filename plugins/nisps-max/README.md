@@ -23,7 +23,7 @@ changed.
 | `like` / `dislike` | store the current (input, action) pair as a liked / disliked experience |
 | `randomise` (`randomize`) | scramble the network weights |
 | `clear` | empty the replay memory |
-| `jolt 1` / `jolt 0` | hold / release the weight-morph gate (learning pauses while held) |
+| `jolt 1` / `jolt 0` | jolt on `jolt 1`: plant new pseudo-liked sounds in the untaught parts of the input space (the firmware's B2); `jolt 0` re-arms it |
 | `write [name]` | save the learned state to a JSON file; no name uses `@file`, else a save dialog |
 | `read [name]` | load a file written by `write`; no name uses `@file`, else an open dialog |
 | `store <n>` | snapshot the current state into slot `n` (1-based) |

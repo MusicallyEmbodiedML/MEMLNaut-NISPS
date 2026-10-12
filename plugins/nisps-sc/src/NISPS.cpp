@@ -61,9 +61,8 @@ private:
     void next(int nSamples) {
         core_->advanceClock(1000.0 * static_cast<double>(nSamples) * sampleDur());
 
-        // Discrete gestures: edge-detected triggers, except jolt which is a
-        // gate (held for the duration of the morph, like the hardware's
-        // momentary button).
+        // Discrete gestures: edge-detected triggers. Jolt fires on its rising
+        // edge; the falling edge only re-arms it.
         const float likeIn = in0(kLikeArg);
         const float dislikeIn = in0(kDislikeArg);
         const float randomiseIn = in0(kRandomiseArg);

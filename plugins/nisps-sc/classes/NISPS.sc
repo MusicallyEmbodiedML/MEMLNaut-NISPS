@@ -7,9 +7,9 @@ NISPS : MultiOutUGen {
 	// Unit exists, so the server has to know it up front.
 	//
 	// Gestures (like/dislike/randomise/clearMemory) are one-shot triggers:
-	// any transition from <= 0 to > 0 fires the gesture once. jolt is a gate:
-	// held > 0 for as long as the weight-morph should run, like the
-	// hardware's momentary button.
+	// any transition from <= 0 to > 0 fires the gesture once. So does jolt:
+	// its rising edge plants new pseudo-liked sounds in the untaught parts of
+	// the input space (the hardware's B2 button).
 	*kr { |inputArray, numOutputs = 4, like = 0, dislike = 0, randomise = 0, jolt = 0,
 		clearMemory = 0, lrScale = 1.0, rewardScale = 1.0, noise = 0.2, trainDivisor = 1|
 		^this.multiNewList(['control', numOutputs, like, dislike, randomise, jolt,

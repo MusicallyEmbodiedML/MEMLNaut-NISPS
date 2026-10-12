@@ -35,8 +35,9 @@
 //                     liked / disliked experience (one-shot gestures)
 //           randomise      : scramble the network weights
 //           clear          : empty the replay memory
-//           jolt 1 / jolt 0: hold / release the weight-morph gate (the
-//                     hardware's momentary button; learning pauses while held)
+//           jolt 1 / jolt 0: jolt on the press (plant new pseudo-liked sounds in
+//                     the untaught parts of the input space, the firmware's B2);
+//                     the release does nothing
 //   outlet 0 (list) : n_outputs floats in [0,1], the mapped action
 //   outlet 1 (int)  : replay-memory size, after every like/dislike/clear/read
 //   outlet 2 (any)  : status replies - `slots <n> <n> ...` listing what is
@@ -412,8 +413,8 @@ void nisps_clear(t_nisps* x) {
 }
 
 // "jolt 1" = press, "jolt 0" = release (a bare "jolt" is A_DEFLONG 0, i.e.
-// release). The morph itself happens inside core.process() on every tick
-// while the gate is held.
+// release). The press jolts (NISPSCore::jolt); the engine then trains towards
+// the planted points on its own ticks, so the release only re-arms it.
 void nisps_jolt(t_nisps* x, long on) {
     std::lock_guard<std::mutex> guard(x->state->lock);
     NISPSCore& core = x->state->core;
