@@ -291,6 +291,7 @@ private:
         std::vector<float> input;
         std::vector<float> target;
     };
+    void shiftSynthTargets();
     void rollSynthTarget(SynthPoint& sp);
     bool rerollNearbySynth();
     bool trainSynth(float lr);
@@ -417,18 +418,20 @@ private:
     static constexpr float kSynthInputLo = 0.1f;
     static constexpr float kSynthInputHi = 0.9f;
     static constexpr float kSynthClearance = 0.2f;
-    static constexpr float kSynthTargetLo = 0.05f;
-    static constexpr float kSynthTargetHi = 0.95f;
-    static constexpr float kSynthBurstLR = 10.f;
+    static constexpr float kSynthTargetLo = 0.02f;
+    static constexpr float kSynthTargetHi = 0.98f;
+    static constexpr float kJoltShiftMin = 0.25f;
+    static constexpr float kJoltShiftMax = 0.5f;
+    static constexpr float kSynthBurstLR = 3.f;
     static constexpr float kSynthBurstDone = 0.25f;
     static constexpr double kSynthBurstMaxMs = 8000.0;
     static constexpr float kSynthHoldLR = 1.f;
     static constexpr float kSynthDislikeRadius = 0.2f;
 
-    static constexpr float kSettleError = 1e-3f;
+    static constexpr float kSettleError = 1e-4f;
     static constexpr int kSettleChecks = 3;
-    static constexpr float kPlateauGain = 0.01f;
-    static constexpr double kPlateauWindowMs = 1000.0;
+    static constexpr float kPlateauGain = 0.005f;
+    static constexpr double kPlateauWindowMs = 2000.0;
     static constexpr double kSettleEvalMs = 100.0;
     static constexpr float kWakeRatio = 1.5f;
     static constexpr float kWakeMargin = 5e-4f;

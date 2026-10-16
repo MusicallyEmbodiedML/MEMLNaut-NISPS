@@ -852,14 +852,37 @@ void NISPSCore::jolt() {
         }
         SynthPoint sp;
         sp.input = best;
-        rollSynthTarget(sp);
         synth_.push_back(std::move(sp));
     }
+    shiftSynthTargets();
     synthSeedMs_ = nowMs_;
     synthSeedError_ = synthError();
     synthBurst_ = true;
     wakeTraining();
     post("jolt", "Jolt: new sounds in the gaps");
+}
+
+// Shared per-dim shift over all points (see the firmware's InterfaceRL::shiftSynthTargets).
+void NISPSCore::shiftSynthTargets() {
+    if (synth_.empty()) return;
+    std::vector<float> mean;
+    for (auto& sp : synth_) {
+        mlp_.GetOutput(sp.input, &evalOut_);
+        sp.target = evalOut_;
+        if (mean.empty()) mean.assign(evalOut_.size(), 0.f);
+        for (size_t j = 0; j < mean.size(); j++) mean[j] += evalOut_[j];
+    }
+    for (size_t j = 0; j < mean.size(); j++) {
+        if (!isActiveDim(j)) continue;
+        const float m = mean[j] / static_cast<float>(synth_.size());
+        const float up = std::max(kSynthTargetHi - m, 0.f);
+        const float down = std::max(m - kSynthTargetLo, 0.f);
+        const float pUp = (up + down > 0.f) ? up / (up + down) : 0.5f;
+        const float mag = kJoltShiftMin + uni() * (kJoltShiftMax - kJoltShiftMin);
+        const float shift = (uni() < pUp) ? mag : -mag;
+        for (auto& sp : synth_)
+            sp.target[j] = std::clamp(sp.target[j] + shift, kSynthTargetLo, kSynthTargetHi);
+    }
 }
 
 void NISPSCore::rollSynthTarget(SynthPoint& sp) {
