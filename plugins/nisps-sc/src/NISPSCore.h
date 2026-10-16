@@ -340,7 +340,7 @@ private:
 
     // Dislike modes
     std::vector<DislikeTarget> dislikeTargets_;
-    DislikeMode dislikeMode_ = DislikeMode::CURRENT;
+    DislikeMode dislikeMode_ = DislikeMode::ESCALATE;  // the firmware's fixed mode
     size_t escalateStage_ = 0;
     double lastDislikeMs_ = 0.0;
     std::vector<float> lastDislikeInput_;
