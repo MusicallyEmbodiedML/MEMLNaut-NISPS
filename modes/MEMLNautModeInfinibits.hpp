@@ -24,6 +24,8 @@ public:
 
     inline static InfinibitsAudioApp<> audioAppInfinibits;
     std::shared_ptr<MIDIInOut> midi_interf;
+    std::shared_ptr<RotarySelectView> waveformView;
+    volatile uint8_t waveformIdx = 0;  // set from the encoder ISR, saved with the model
 
     void setupInterface() {
         interface.setup(kN_InputParams, InfinibitsAudioApp<>::kN_Params, false);  // no Messages screen
@@ -32,6 +34,18 @@ public:
         });
         interface.bindInterface(MEMLNAUT_INPUT_MODE, JOYSTICK_IS_4D);
         interface.setModeInfo("infinibits", "Infinibits");
+
+        // The waveform is saved with each model (one byte of extra data).
+        interface.setExtraSaveCallback([this]() -> std::vector<uint8_t> {
+            return { waveformIdx };
+        });
+        interface.setExtraLoadCallback([this](const uint8_t* data, uint16_t size, uint16_t) {
+            if (size < 1 || data[0] >= InfinibitsAudioApp<>::kNumWaveforms) return;
+            waveformIdx = data[0];
+            audioAppInfinibits.setWaveformQueued(
+                static_cast<InfinibitsAudioApp<>::Waveform>(data[0]));
+            if (waveformView) waveformView->setSelection(data[0]);
+        });
         interfacePtr = make_non_owning(interface);
     }
 
@@ -49,16 +63,18 @@ public:
     }
 
     void addViews() {
-        auto waveformView = std::make_shared<RotarySelectView>("Waveform");
+        waveformView = std::make_shared<RotarySelectView>("Waveform");
         std::vector<String> waveNames;
         for (size_t i = 0; i < InfinibitsAudioApp<>::kNumWaveforms; ++i)
             waveNames.push_back(InfinibitsAudioApp<>::kWaveformNames[i]);
         waveformView->setOptions(std::span<String>(waveNames.data(), waveNames.size()));
         waveformView->setSelection(0);
-        waveformView->setNewSelectionCallback([](size_t idx) {
-            if (idx < InfinibitsAudioApp<>::kNumWaveforms)
+        waveformView->setNewSelectionCallback([this](size_t idx) {
+            if (idx < InfinibitsAudioApp<>::kNumWaveforms) {
+                waveformIdx = static_cast<uint8_t>(idx);
                 audioAppInfinibits.setWaveformQueued(
                     static_cast<InfinibitsAudioApp<>::Waveform>(idx));
+            }
         });
         MEMLNaut::Instance()->disp->AddView(waveformView);
         interface.addInputSourceView();
