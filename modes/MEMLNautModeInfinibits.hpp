@@ -26,7 +26,7 @@ public:
     std::shared_ptr<MIDIInOut> midi_interf;
 
     void setupInterface() {
-        interface.setup(kN_InputParams, InfinibitsAudioApp<>::kN_Params);
+        interface.setup(kN_InputParams, InfinibitsAudioApp<>::kN_Params, false);  // no Messages screen
         interface.setRVY1Override([this](float value) {
             audioAppInfinibits.setFeedbackFactorQueued(value * 2.f);
         });
