@@ -33,11 +33,12 @@
 // #define MODE_VERBFX
 // #define MODE_NAUTLINEAR
 // #define MODE_SAXFX
-#define MODE_CHUNKYBITS
+// #define MODE_CHUNKYBITS
+#define MODE_INFINIBITS
 // #define MODE_BUNTY
 // #define MODE_ELYSIAMORFS
 // #define MODE_MEMLCELIUM
-#define MODE_MIXMASTERMEML
+// #define MODE_MIXMASTERMEML
 // #define MODE_D50
 // #define MODE_TR6S
 // #define MODE_TR8S
@@ -89,6 +90,10 @@
 #ifdef MODE_CHUNKYBITS
   #include "modes/MEMLNautModeChunkyBits.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeChunkyBits
+#endif
+#ifdef MODE_INFINIBITS
+  #include "modes/MEMLNautModeInfinibits.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeInfinibits
 #endif
 #ifdef MODE_BUNTY
   #include "modes/MEMLNautModeBunty.hpp"
