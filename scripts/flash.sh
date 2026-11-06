@@ -74,7 +74,8 @@ for e in entries:
 for e in entries:
     port = e.get("port", {})
     props = port.get("properties", {}) or {}
-    if props.get("vid", "").lower() == "0x2e8a" and props.get("pid", "").lower() == "0xf00f":
+    # 2e8a:f00f is the normal build; 239a:cafe is a TinyUSB build (build.sh -m, Paramsite).
+    if (props.get("vid", "").lower(), props.get("pid", "").lower()) in (("0x2e8a", "0xf00f"), ("0x239a", "0xcafe")):
         print(port.get("address", ""))
         sys.exit(0)
 ' || true
