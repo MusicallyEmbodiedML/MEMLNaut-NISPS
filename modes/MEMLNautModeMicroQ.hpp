@@ -13,135 +13,68 @@
 #include <memory>
 #include <array>
 #include <cstdio>
+#include <algorithm>
 
-// Waldorf microQ MIDI CC options — grouped by synthesis section
+// Waldorf microQ MIDI CC options, from the microQ User's Manual, Appendix
+// "Controller Numbers". Left out: bank select (0/32), sustain and sostenuto
+// (64/66) and 120+. Set Global > Controller Recv to on (W..Z off these CCs).
 static const std::vector<CCOption> kMicroQCCOptions = {
     // Performance
-    {  1, "Mod Wheel"       },
-    {  5, "Glide Rate"      },
-    { 10, "Pan"             },
-    { 50, "Pitch Mod"       },
-    { 51, "Glide Mode"      },
-    { 65, "Glide Active"    },
+    {  1, "Mod Wheel"      }, {  2, "Breath"         }, {  4, "Foot Ctrl"      },
+    {  5, "Glide Rate"     }, {  7, "Volume"         }, { 10, "Pan"            },
+    { 50, "Pitch Mod"      }, { 51, "Glide Mode"     }, { 65, "Glide Active"   },
     // Arpeggiator
-    { 12, "Arp Range"       },
-    { 13, "Arp Length"      },
-    { 14, "Arp Active"      },
-    // LFO 1
-    { 17, "LFO1 Shape"      },
-    { 18, "LFO1 Speed"      },
-    { 19, "LFO1 Sync"       },
-    { 20, "LFO1 Delay"      },
-    // LFO 2
-    { 21, "LFO2 Shape"      },
-    { 22, "LFO2 Speed"      },
-    { 23, "LFO2 Sync"       },
-    { 24, "LFO2 Delay"      },
-    // LFO 3
-    { 25, "LFO3 Shape"      },
-    { 26, "LFO3 Speed"      },
-    { 27, "LFO3 Sync"       },
-    { 28, "LFO3 Delay"      },
-    // Oscillator 1
-    { 29, "OSC1 Octave"     },
-    { 30, "OSC1 Semi"       },
-    { 31, "OSC1 Detune"     },
-    { 32, "OSC1 FM"         },
-    { 33, "OSC1 Shape"      },
-    { 34, "OSC1 PW"         },
-    { 35, "OSC1 PWM"        },
-    // Oscillator 2
-    { 36, "OSC2 Octave"     },
-    { 37, "OSC2 Semi"       },
-    { 38, "OSC2 Detune"     },
-    { 39, "OSC2 FM"         },
-    { 40, "OSC2 Shape"      },
-    { 41, "OSC2 PW"         },
-    { 42, "OSC2 PWM"        },
-    // Oscillator 3
-    { 43, "OSC3 Octave"     },
-    { 44, "OSC3 Semi"       },
-    { 45, "OSC3 Detune"     },
-    { 46, "OSC3 FM"         },
-    { 47, "OSC3 Shape"      },
-    { 48, "OSC3 PW"         },
-    { 49, "OSC3 PWM"        },
-    // Mix
-    { 52, "OSC1 Level"      },
-    { 53, "OSC1 Balance"    },
-    { 54, "RingMod Level"   },
-    { 55, "RingMod Balance" },
-    { 56, "OSC2 Level"      },
-    { 57, "OSC2 Balance"    },
-    { 58, "OSC3 Level"      },
-    { 59, "OSC3 Balance"    },
-    { 60, "Noise Level"     },
-    { 61, "Noise Balance"   },
-    // Filter 1
-    { 68, "F1 Type"         },
-    { 70, "F1 Cutoff"       },
-    { 71, "F1 Resonance"    },
-    { 72, "F1 Drive"        },
-    { 73, "F1 Keytrack"     },
-    { 74, "F1 Env Amt"      },
-    { 76, "F1 CutoffMod"    },
-    { 77, "F1 FM"           },
-    { 78, "F1 Pan"          },
-    { 79, "F1 PanMod"       },
-    // Filter 2
-    { 80, "F2 Type"         },
-    { 81, "F2 Cutoff"       },
-    { 82, "F2 Resonance"    },
-    { 83, "F2 Drive"        },
-    { 84, "F2 Keytrack"     },
-    { 85, "F2 Env Amt"      },
-    { 87, "F2 CutoffMod"    },
-    { 88, "F2 FM"           },
-    { 89, "F2 Pan"          },
-    { 90, "F2 PanMod"       },
-    // Amp & FX
-    { 93, "Amp Mod"         },
-    { 94, "FX1 Mix"         },
-    { 95, "FX2 Mix"         },
-    // Filter Envelope
-    { 96, "FE Attack"       },
-    { 97, "FE Decay"        },
-    { 98, "FE Sustain"      },
-    { 99, "FE Decay2"       },
-    {100, "FE Sustain2"     },
-    {101, "FE Release"      },
-    // Amp Envelope
-    {102, "AE Attack"       },
-    {103, "AE Decay"        },
-    {104, "AE Sustain"      },
-    {105, "AE Decay2"       },
-    {106, "AE Sustain2"     },
-    {107, "AE Release"      },
-    // Envelope 3
-    {108, "E3 Attack"       },
-    {109, "E3 Decay"        },
-    {110, "E3 Sustain"      },
-    {111, "E3 Decay2"       },
-    {112, "E3 Sustain2"     },
-    {113, "E3 Release"      },
-    // Envelope 4
-    {114, "E4 Attack"       },
-    {115, "E4 Decay"        },
-    {116, "E4 Sustain"      },
-    {117, "E4 Decay2"       },
-    {118, "E4 Sustain2"     },
-    {119, "E4 Release"      },
+    { 12, "Arp Range"      }, { 13, "Arp Length"     }, { 14, "Arp Active"     },
+    // LFOs
+    { 15, "LFO1 Shape"     }, { 16, "LFO1 Speed"     }, { 17, "LFO1 Sync"      }, { 18, "LFO1 Delay"     },
+    { 19, "LFO2 Shape"     }, { 20, "LFO2 Speed"     }, { 21, "LFO2 Sync"      }, { 22, "LFO2 Delay"     },
+    { 23, "LFO3 Shape"     }, { 24, "LFO3 Speed"     }, { 25, "LFO3 Sync"      }, { 26, "LFO3 Delay"     },
+    // Oscillators
+    { 27, "OSC1 Octave"    }, { 28, "OSC1 Semi"      }, { 29, "OSC1 Detune"    }, { 30, "OSC1 FM"        },
+    { 31, "OSC1 Shape"     }, { 33, "OSC1 PW"        }, { 34, "OSC1 PWM"       },
+    { 35, "OSC2 Octave"    }, { 36, "OSC2 Semi"      }, { 37, "OSC2 Detune"    }, { 38, "OSC2 FM"        },
+    { 39, "OSC2 Shape"     }, { 40, "OSC2 PW"        }, { 41, "OSC2 PWM"       },
+    { 42, "OSC3 Octave"    }, { 43, "OSC3 Semi"      }, { 44, "OSC3 Detune"    }, { 45, "OSC3 FM"        },
+    { 46, "OSC3 Shape"     }, { 47, "OSC3 PW"        }, { 48, "OSC3 PWM"       }, { 49, "OSC Sync"       },
+    // Mixer
+    { 52, "OSC1 Level"     }, { 53, "OSC1 Balance"   }, { 54, "RingMod Level"  }, { 55, "RingMod Bal"    },
+    { 56, "OSC2 Level"     }, { 57, "OSC2 Balance"   }, { 58, "OSC3 Level"     }, { 59, "OSC3 Balance"   },
+    { 60, "N/E Level"      }, { 61, "N/E Balance"    },
+    // Filters
+    { 67, "Filter Routing" },
+    { 68, "F1 Type"        }, { 69, "F1 Cutoff"      }, { 70, "F1 Resonance"   }, { 71, "F1 Drive"       },
+    { 72, "F1 Keytrack"    }, { 73, "F1 Env Amt"     }, { 74, "F1 Env Velo"    }, { 75, "F1 CutoffMod"   },
+    { 76, "F1 FM"          }, { 77, "F1 Pan"         }, { 78, "F1 PanMod"      },
+    { 79, "F2 Type"        }, { 80, "F2 Cutoff"      }, { 81, "F2 Resonance"   }, { 82, "F2 Drive"       },
+    { 83, "F2 Keytrack"    }, { 84, "F2 Env Amt"     }, { 85, "F2 Env Velo"    }, { 86, "F2 CutoffMod"   },
+    { 87, "F2 FM"          }, { 88, "F2 Pan"         }, { 89, "F2 PanMod"      },
+    // Amp and effects
+    { 90, "Amp Volume"     }, { 91, "Amp Velocity"   }, { 92, "Amp Mod"        },
+    { 93, "FX1 Mix"        }, { 94, "FX2 Mix"        },
+    // Filter envelope
+    { 95, "FE Attack"      }, { 96, "FE Decay"       }, { 97, "FE Sustain"     },
+    { 98, "FE Decay2"      }, { 99, "FE Sustain2"    }, {100, "FE Release"     },
+    // Amp envelope
+    {101, "AE Attack"      }, {102, "AE Decay"       }, {103, "AE Sustain"     },
+    {104, "AE Decay2"      }, {105, "AE Sustain2"    }, {106, "AE Release"     },
+    // Envelopes 3 and 4
+    {107, "E3 Attack"      }, {108, "E3 Decay"       }, {109, "E3 Sustain"     },
+    {110, "E3 Decay2"      }, {111, "E3 Sustain2"    }, {112, "E3 Release"     },
+    {113, "E4 Attack"      }, {114, "E4 Decay"       }, {115, "E4 Sustain"     },
+    {116, "E4 Decay2"      }, {117, "E4 Sustain2"    }, {118, "E4 Release"     },
 };
 
-// Default 16: filter cutoffs/resonances, LFO speeds, filter envelope, OSC detunes, FX
+// Default 32: as the Blofeld (same engine), with filter 2 drive in place of the
+// Blofeld-only noise colour.
 static const std::vector<uint8_t> kMicroQDefaultCCs = {
-    70, 71,      // F1 Cutoff, F1 Resonance
-    81, 82,      // F2 Cutoff, F2 Resonance
-    18, 22,      // LFO1 Speed, LFO2 Speed
-    96, 97, 98, 101,  // FE Attack, Decay, Sustain, Release
-    31, 38,      // OSC1 Detune, OSC2 Detune
-    93, 94,      // Amp Mod, FX1 Mix
-     1, 10       // Mod Wheel, Pan
+    16, 20,                          // LFO1/2 Speed
+    29, 30, 33, 34, 37, 38, 40, 44,  // OSC detunes, FM, PW, PWM
+    52, 54, 56, 58, 60,              // OSC1/2/3, ring mod and N/E levels
+    69, 70, 71, 73,                  // Filter 1 cutoff, resonance, drive, env amount
+    80, 81, 82, 84,                  // Filter 2 cutoff, resonance, drive, env amount
+    93, 94,                          // FX1/FX2 mix
+    95, 96, 97, 100,                 // Filter envelope ADSR
+    101, 102, 106                    // Amp envelope attack, decay, release
 };
 
 // Focus group bitmasks
@@ -258,9 +191,11 @@ public:
         ccView->setOptions(kMicroQCCOptions);
 
         auto saved = loadCCAssignments();
+        // The view sorts the CCs, and its order is the NN output order, so use it.
         ccView->setSelectedCCs(saved);
-        midi_interf->SetParamCCNumbers(saved);
-        recomputeFocusGroups(saved, focusView, updateActiveDims);
+        const std::vector<uint8_t>& ordered = ccView->getSelectedCCs();
+        midi_interf->SetParamCCNumbers(ordered);
+        recomputeFocusGroups(ordered, focusView, updateActiveDims);
 
         ccView->setOnChangeCallback([this, focusView, updateActiveDims](const std::vector<uint8_t>& ccs) {
             midi_interf->SetParamCCNumbers(ccs);
@@ -277,19 +212,18 @@ public:
     void loopCore0() {}
 
 private:
-    static constexpr const char* kCCFile = "/microq_cc.bin";
+    static constexpr const char* kCCFile = "/microq_v2_cc.bin";
     uint32_t lastCCSendMs_ = 0;
     bool held_ = false;
 
     static uint32_t ccToGroupMask(uint8_t cc) {
-        if (cc >= 17 && cc <= 28)   return kMQFocusLFO;
-        if (cc >= 29 && cc <= 51)   return kMQFocusOSC;
-        if (cc == 50 || cc == 51)   return kMQFocusOSC;
+        if (cc >= 15 && cc <= 26)   return kMQFocusLFO;
+        if (cc >= 27 && cc <= 49)   return kMQFocusOSC;
         if (cc >= 52 && cc <= 61)   return kMQFocusMIX;
-        if (cc >= 68 && cc <= 90)   return kMQFocusFILTER;
-        if (cc >= 91 && cc <= 95)   return kMQFocusFX;
-        if (cc >= 96 && cc <= 119)  return kMQFocusENV;
-        return 0;  // performance CCs (1, 5, 7, 10, etc.) — always active
+        if (cc >= 67 && cc <= 89)   return kMQFocusFILTER;
+        if (cc >= 90 && cc <= 94)   return kMQFocusFX;
+        if (cc >= 95 && cc <= 118)  return kMQFocusENV;
+        return 0;  // performance and arp CCs: always active
     }
 
     void recomputeFocusGroups(const std::vector<uint8_t>& ccs,

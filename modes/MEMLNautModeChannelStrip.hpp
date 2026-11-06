@@ -32,9 +32,9 @@ public:
     void setupInterface() {
         interface.setup(kN_InputParams, ChannelStripAudioApp<>::kN_Params);
 
-        // Repurpose the RVX1 knob (default: reward scaling) as a dry/wet blend.
+        // Repurpose the RVY1 knob (default: reward scaling) as a dry/wet blend.
         // Must be set before bindInterface(), which captures the override.
-        interface.setRVX1Override([this](float value) {
+        interface.setRVY1Override([this](float value) {
             audioAppChannelStrip.setWetDryQueued(value);
         });
 

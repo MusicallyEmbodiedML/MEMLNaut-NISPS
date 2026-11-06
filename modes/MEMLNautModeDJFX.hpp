@@ -44,11 +44,11 @@ public:
         interface.nnOutputsGraphView = djView;
 
         interface.setup(kN_InputParams, DJFXAudioApp<>::kN_Params);
-        interface.setRVX1Override([this](float value) {
+        interface.setRVY1Override([this](float value) {
             if (audioAppDJFX.djMode_)
-                audioAppDJFX.setRVX1Queued(value);    // DJ Mode: RVX1 = DJ filter sweep
+                audioAppDJFX.setRVY1Queued(value);    // DJ Mode: RVY1 = DJ filter sweep
             else
-                audioAppDJFX.setWetDryQueued(value);  // Manual: RVX1 = wet/dry mix
+                audioAppDJFX.setWetDryQueued(value);  // Manual: RVY1 = wet/dry mix
         });
         interface.bindInterface(MEMLNAUT_INPUT_MODE, JOYSTICK_IS_4D);
         interface.setModeInfo("djfx", "LiveFX");  // "djfx" kept = SD preset dir (back-compat)
@@ -174,7 +174,7 @@ public:
         MEMLNaut::Instance()->disp->InsertViewAfter(enableView, vuView);
 
         // Options screen — single toggle for DJ Mode. On (highlighted): joystick drives
-        // wet/dry, RVX1 = DJ filter. Off: RVX1 drives wet/dry, no filtering.
+        // wet/dry, RVY1 = DJ filter. Off: RVY1 drives wet/dry, no filtering.
         auto optionsView = std::make_shared<BlockSelectView>(
             "Options", TFT_YELLOW, 1, 95, 70, TFT_BLACK,
             std::vector<String>{ "DJ Mode" },
@@ -195,8 +195,8 @@ public:
     __force_inline void loop() {
         audioAppDJFX.loop();
         const auto src = interface.getInputSource();
-        // Joystick drives wet/dry only in DJ Mode. When off, RVX1 controls wet/dry
-        // manually (see setRVX1Override) and the stick is exploration-only.
+        // Joystick drives wet/dry only in DJ Mode. When off, RVY1 controls wet/dry
+        // manually (see setRVY1Override) and the stick is exploration-only.
         if (audioAppDJFX.djMode_ &&
             (src == InterfaceRLBase::INPUT_SOURCE::JOYSTICK_3D ||
              src == InterfaceRLBase::INPUT_SOURCE::JOYSTICK_4D)) {

@@ -101,15 +101,15 @@ public:
     std::shared_ptr<CCSelectView> ccView_;
     std::shared_ptr<BlockSelectView> focusView_;
     std::function<void()> updateActiveDims_;
-    // rvx (RV_X1) knob: fades NN modulation in/out around home. Written from the knob
+    // Knob Y (RV_Y1): fades NN modulation in/out around home. Written from the knob
     // callback, read in the param transform hook (same cross-core pattern as focusManager).
     volatile float fadeAmount_ = 0.f;
 
     void setupInterface() {
         interface.setup(kN_InputParams, TRxSAudioApp<32>::kN_Params);
-        // Repurpose rvx (RV_X1) from reward scale to the modulation fade amount.
+        // Repurpose knob Y (RV_Y1) from reward scale to the modulation fade amount.
         // Must be set before bindInterface(), which reads the override.
-        interface.setRVX1Override([this](float v) { fadeAmount_ = v; interface.markInputDirty(); });
+        interface.setRVY1Override([this](float v) { fadeAmount_ = v; interface.markInputDirty(); });
         interface.bindInterface(InterfaceRLBase::INPUT_MODES::JOYSTICK, true);
         interface.setModeInfo("tr8s", "TR-8S");
         interfacePtr = make_non_owning(interface);
@@ -127,7 +127,7 @@ public:
 
         // Home + fade is applied ONLY on the way out to MIDI — it does not touch the NN
         // outputs graph or the training action. Linear interpolation home -> NN output:
-        // out = home + fade*(nn - home).  fade (rvx) = 0 -> home, fade = 1 -> NN output.
+        // out = home + fade*(nn - home).  fade (knob Y) = 0 -> home, fade = 1 -> NN output.
         interface.paramOutputHook = [this](std::span<const float> nn) {
             const float fade = fadeAmount_;
             const size_t n = nn.size();
@@ -259,11 +259,22 @@ public:
     // global file — only real user edits update that).
     void applyMapping(const std::vector<uint8_t>& ccs, const std::vector<float>& homes) {
         if (!ccView_) return;
-        ccView_->setSelectedCCs(ccs);
-        ccView_->setHomeValues(homes);
-        if (midi_interf) midi_interf->SetParamCCNumbers(ccs);
+        // The view sorts its CCs and its order is the NN output order. Sort the homes
+        // with their CCs first so each home stays with its CC.
+        std::vector<std::pair<uint8_t, float>> pairs;
+        for (size_t i = 0; i < ccs.size(); i++)
+            pairs.emplace_back(ccs[i], i < homes.size() ? homes[i] : 0.f);
+        std::sort(pairs.begin(), pairs.end());
+        std::vector<uint8_t> sortedCCs;
+        std::vector<float>   sortedHomes;
+        for (auto& p : pairs) { sortedCCs.push_back(p.first); sortedHomes.push_back(p.second); }
+
+        ccView_->setSelectedCCs(sortedCCs);
+        ccView_->setHomeValues(sortedHomes);
+        const std::vector<uint8_t>& ordered = ccView_->getSelectedCCs();
+        if (midi_interf) midi_interf->SetParamCCNumbers(ordered);
         syncHomeArray(ccView_->getHomeValues());
-        if (focusView_ && updateActiveDims_) recomputeFocusGroups(ccs, focusView_, updateActiveDims_);
+        if (focusView_ && updateActiveDims_) recomputeFocusGroups(ordered, focusView_, updateActiveDims_);
         ccView_->resetDirty();
         ccView_->redraw();
     }

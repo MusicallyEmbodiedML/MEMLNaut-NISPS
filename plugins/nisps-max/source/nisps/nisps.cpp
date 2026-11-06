@@ -36,7 +36,7 @@
 //           randomise      : scramble the network weights
 //           clear          : empty the replay memory
 //           jolt 1 / jolt 0: jolt on the press (plant new pseudo-liked sounds in
-//                     the untaught parts of the input space, the firmware's B2);
+//                     the untaught parts of the input space, the firmware's A2);
 //                     the release does nothing
 //   outlet 0 (list) : n_outputs floats in [0,1], the mapped action
 //   outlet 1 (int)  : replay-memory size, after every like/dislike/clear/read

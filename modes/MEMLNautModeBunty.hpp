@@ -31,7 +31,7 @@ public:
 
     void setupInterface() {
         interface.setup(kN_InputParams, BuntyAudioApp<>::kN_Params);
-        interface.setRVX1Override([this](float value) {
+        interface.setRVY1Override([this](float value) {
             audioAppBunty.setWetDryQueued(value);
         });
         // std::vector<size_t> serialChannels;

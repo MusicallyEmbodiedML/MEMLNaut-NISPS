@@ -153,11 +153,11 @@ public:
     void dislike();
     void randomiseNetwork();
     void clearMemory();
-    // Jolt (the firmware's B2): plant a fresh set of synthetic pseudo-likes, spread
+    // Jolt (the firmware's A2): plant a fresh set of synthetic pseudo-likes, spread
     // through the input range away from the likes, with target sounds far from what the
     // net plays there now, and train hard towards them. One-shot.
     void jolt();
-    // Drag (the joystick switch / toggle A1): hold the current sound while the input
+    // Drag (the joystick switch / toggle B1): hold the current sound while the input
     // moves, then store it as a like wherever the input is on release.
     void startDrag();
     void endDrag();
@@ -426,6 +426,7 @@ private:
     static constexpr float kSynthBurstDone = 0.25f;
     static constexpr double kSynthBurstMaxMs = 8000.0;
     static constexpr float kSynthHoldLR = 1.f;
+    static constexpr size_t kSynthLikeAnchors = 8;  // likes trained with each jolt step
     static constexpr float kSynthDislikeRadius = 0.2f;
 
     static constexpr float kSettleError = 1e-4f;

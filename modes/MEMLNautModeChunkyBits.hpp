@@ -27,7 +27,7 @@ public:
 
     void setupInterface() {
         interface.setup(kN_InputParams, ChunkyBitsAudioApp<>::kN_Params);
-        interface.setRVX1Override([this](float value) {
+        interface.setRVY1Override([this](float value) {
             audioAppChunkyBits.setFeedbackFactorQueued(value * 2.f);
         });
         // Envelope→NN-input feedback disabled: the AR envelope no longer feeds back into

@@ -175,10 +175,13 @@ public:
             paf0_shift = paf1_shift = paf2_shift = 0.f;
             paf0_vib  = paf1_vib = paf2_vib = 0.f;
             paf0_vfr  = paf1_vfr = paf2_vfr = 0.f;
-            v0AmpEnv.setup(0.01f + smoothParams[i++] * 1.f,
-                           0.5f  + sqp() * 200.f,
-                           0.01f + smoothParams[i++] * 0.5f,
-                           1.f   + sqp() * 800.f, sampleRatef);
+            {  // one read per statement: the order of argument evaluation is unspecified
+                const float attack = 0.01f + smoothParams[i++] * 1.f;
+                const float decay = 0.5f + sqp() * 200.f;
+                const float sustain = 0.01f + smoothParams[i++] * 0.5f;
+                const float release = 1.f + sqp() * 800.f;
+                v0AmpEnv.setup(attack, decay, sustain, release, sampleRatef);
+            }
             v0PitchEnv.setup(0.01f,
                              0.5f + sqp() * 30.f,
                              0.f, 0.1f, sampleRatef);

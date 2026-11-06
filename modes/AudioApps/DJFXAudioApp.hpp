@@ -30,14 +30,14 @@ public:
 
     volatile uint32_t enableMask_{kFX_All};
 
-    // DJ Mode (default on): joystick position drives wet/dry, RVX1 drives the DJ filter.
-    // When off: RVX1 manually drives wet/dry and the filter is bypassed. Written by the
+    // DJ Mode (default on): joystick position drives wet/dry, RVY1 drives the DJ filter.
+    // When off: RVY1 manually drives wet/dry and the filter is bypassed. Written by the
     // UI (Core 0), read by audio (Core 1) — bool write/read is atomic on Cortex-M0+.
     volatile bool djMode_{true};
 
     queue_t wetdryQueue;
     queue_t bpmQueue;
-    queue_t rvx1Queue;
+    queue_t rvy1Queue;
 
     void setWetDryQueued(float value) {
         queue_try_add(&wetdryQueue, &value);
@@ -47,8 +47,8 @@ public:
         queue_try_add(&bpmQueue, &bpm);
     }
 
-    void setRVX1Queued(float value) {
-        queue_try_add(&rvx1Queue, &value);
+    void setRVY1Queued(float value) {
+        queue_try_add(&rvy1Queue, &value);
     }
 
     AudioDriver::codec_config_t GetDriverConfig() const override {
@@ -63,7 +63,7 @@ public:
     DJFXAudioApp() : AudioAppBase<NPARAMS>() {
         queue_init(&wetdryQueue, sizeof(float), 1);
         queue_init(&bpmQueue, sizeof(float), 1);
-        queue_init(&rvx1Queue, sizeof(float), 1);
+        queue_init(&rvy1Queue, sizeof(float), 1);
     };
 
     __attribute__((hot)) stereosample_t __force_inline Process(const stereosample_t x) override
@@ -74,12 +74,12 @@ public:
         // the dead channel will be silent — that's a cabling issue, not a code bug.
         float mix = (x.L + x.R) * 0.5f;
 
-        // RVX1 DJ filter — on the mono input, before any FX. Only in DJ Mode; when DJ
-        // Mode is off, RVX1 manually controls wet/dry instead, with no filtering.
+        // RVY1 DJ filter — on the mono input, before any FX. Only in DJ Mode; when DJ
+        // Mode is off, RVY1 manually controls wet/dry instead, with no filtering.
         if (djMode_) {
-            if (rvx1Val_ < 0.499f)
+            if (rvy1Val_ < 0.499f)
                 mix = rvLP_.play(mix);
-            else if (rvx1Val_ > 0.501f)
+            else if (rvy1Val_ > 0.501f)
                 mix = rvHP_.play(mix);
         }
 
@@ -154,7 +154,7 @@ public:
         // Delay feedback bandpass — start centred, broad
         delayBP_.set(maxiBiquad::filterTypes::BANDPASS, 1000.f, 1.f, 0.f);
 
-        // RVX1 filter — start transparent (LP well above audible, HP well below)
+        // RVY1 filter — start transparent (LP well above audible, HP well below)
         rvLP_.set(maxiBiquad::filterTypes::LOWPASS,  20000.f, 0.707f, 0.f);
         rvHP_.set(maxiBiquad::filterTypes::HIGHPASS,    20.f, 0.707f, 0.f);
 
@@ -168,7 +168,7 @@ public:
         return (raw > 0.3f) ? (raw - 0.3f) * (1.f / 0.7f) : 0.f;
     }
 
-    // Real-time controls (wet/dry, BPM, RVX1 filter) arrive on their own queues from
+    // Real-time controls (wet/dry, BPM, RVY1 filter) arrive on their own queues from
     // Core 0 and must update every audio-core iteration — NOT slaved to the NN action
     // cadence. ProcessParams() only runs when a new NN action is produced, so when the
     // joystick is still (e.g. resting at centre) it never runs; draining these queues
@@ -186,8 +186,8 @@ public:
         }
         {
             float rv;
-            if (queue_try_remove(&rvx1Queue, &rv)) {
-                rvx1Val_ = rv;
+            if (queue_try_remove(&rvy1Queue, &rv)) {
+                rvy1Val_ = rv;
                 if (rv < 0.499f) {
                     // Knob left of centre → LP sweeps 20kHz→40Hz (exponential)
                     const float frac   = (0.5f - rv) / 0.5f;
@@ -206,7 +206,7 @@ public:
     // Runs every Core 1 iteration (loop1), independent of NN action generation.
     void loop() override
     {
-        pollControls();                    // always: real-time wet/dry, BPM, RVX1
+        pollControls();                    // always: real-time wet/dry, BPM, RVY1
         AudioAppBase<NPARAMS>::loop();      // FX params only when a new NN action arrives
     }
 
@@ -321,10 +321,10 @@ public:
     }
 
 protected:
-    // RVX1 DJ filter — mono, applied before all FX
+    // RVY1 DJ filter — mono, applied before all FX
     maxiBiquad rvLP_;
     maxiBiquad rvHP_;
-    float rvx1Val_{0.5f};
+    float rvy1Val_{0.5f};
 
     maxiBiquad delayBP_;
 

@@ -152,7 +152,7 @@ public:
 
     queue_t wetdryQueue;
 
-    // RVX1 knob (repurposed from reward scaling) -> parallel dry/wet blend.
+    // RVY1 knob (repurposed from reward scaling) -> parallel dry/wet blend.
     void setWetDryQueued(float value) {
         queue_try_add(&wetdryQueue, &value);
     }
@@ -249,7 +249,7 @@ public:
                 y1 = tanhf(y1 * postGain);
             }
         }
-        // Parallel dry/wet blend (equal-power), driven by the RVX1 knob.
+        // Parallel dry/wet blend (equal-power), driven by the RVY1 knob.
         stereosample_t ret {
             (y  * wetGain) + (x[0] * dryGain),
             (y1 * wetGain) + (x[1] * dryGain)

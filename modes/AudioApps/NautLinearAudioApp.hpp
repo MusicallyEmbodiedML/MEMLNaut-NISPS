@@ -94,7 +94,7 @@ public:
                         + sineShaper.process(mono)
                         + chebyDC.play(chebyShaper.process(mono), 0.995f);
 
-        // wet/dry (equal-power), RVX1 knob via wetdry_mix_.
+        // wet/dry (equal-power), RVY1 knob via wetdry_mix_.
         const float wetG = sqrtf(wetdry_mix_);
         const float dryG = sqrtf(1.f - wetdry_mix_);
         const float y = (wet * wetG) + (mono * dryG);

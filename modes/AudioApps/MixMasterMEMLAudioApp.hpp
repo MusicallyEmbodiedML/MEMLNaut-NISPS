@@ -473,13 +473,19 @@ public:
             paf1_shift = -100.f + (params[paramIdx++] * 200.f);
             paf2_shift = -100.f + (params[paramIdx++] * 200.f);
 
-            v0AmpEnv.setup(0.01f + (params[paramIdx++] * 1.f),
-                0.5f + sqParam() * 200.f,
-                0.01 + (params[paramIdx++] * 0.5f), 1.f + sqParam() * 800.f, sampleRatef);
+            {  // one read per statement: the order of argument evaluation is unspecified
+                const float attack = 0.01f + (params[paramIdx++] * 1.f);
+                const float decay = 0.5f + sqParam() * 200.f;
+                const float sustain = 0.01 + (params[paramIdx++] * 0.5f);
+                const float release = 1.f + sqParam() * 800.f;
+                v0AmpEnv.setup(attack, decay, sustain, release, sampleRatef);
+            }
 
-            v0PitchEnv.setup(0.01f + (params[paramIdx++] * 3.f),
-                0.5f + sqParam() * 100.f,
-                0.f, 0.1f, sampleRatef);
+            {  // one read per statement: the order of argument evaluation is unspecified
+                const float attack = 0.01f + (params[paramIdx++] * 3.f);
+                const float decay = 0.5f + sqParam() * 100.f;
+                v0PitchEnv.setup(attack, decay, 0.f, 0.1f, sampleRatef);
+            }
 
             v0PitchEmph = params[paramIdx++] * 50.f;
 
@@ -512,13 +518,19 @@ public:
             v1paf1_shift = -300.f + (params[paramIdx++] * 600.f);
             v1paf2_shift = -100.f + (params[paramIdx++] * 200.f);
 
-            v1AmpEnv.setup(0.01f + (params[paramIdx++] * 1.f),
-                0.5f + sqParam() * 100.f,
-                0.01 + (params[paramIdx++] * 0.3f), 1.f + sqParam() * 200.f, sampleRatef);
+            {  // one read per statement: the order of argument evaluation is unspecified
+                const float attack = 0.01f + (params[paramIdx++] * 1.f);
+                const float decay = 0.5f + sqParam() * 100.f;
+                const float sustain = 0.01 + (params[paramIdx++] * 0.3f);
+                const float release = 1.f + sqParam() * 200.f;
+                v1AmpEnv.setup(attack, decay, sustain, release, sampleRatef);
+            }
 
-            v1PitchEnv.setup(0.01f + (params[paramIdx++] * 3.f),
-                0.5f + sqParam() * 100.f,
-                0.f, 0.1f, sampleRatef);
+            {  // one read per statement: the order of argument evaluation is unspecified
+                const float attack = 0.01f + (params[paramIdx++] * 3.f);
+                const float decay = 0.5f + sqParam() * 100.f;
+                v1PitchEnv.setup(attack, decay, 0.f, 0.1f, sampleRatef);
+            }
 
             v1PitchEmph = params[paramIdx++] * 10.f;
 
@@ -542,13 +554,19 @@ public:
             v2paf1_shift = -200.f + (params[paramIdx++] * 400.f);
             v2paf2_shift = -200.f + (params[paramIdx++] * 400.f);
 
-            v2AmpEnv.setup(0.01f + (params[paramIdx++] * 0.1f),
-                0.5f + sqParam() * 50.f,
-                params[paramIdx++] * 0.1f, 1.f + sqParam() * 50.f, sampleRatef);
+            {  // one read per statement: the order of argument evaluation is unspecified
+                const float attack = 0.01f + (params[paramIdx++] * 0.1f);
+                const float decay = 0.5f + sqParam() * 50.f;
+                const float sustain = params[paramIdx++] * 0.1f;
+                const float release = 1.f + sqParam() * 50.f;
+                v2AmpEnv.setup(attack, decay, sustain, release, sampleRatef);
+            }
 
-            v2PitchEnv.setup(0.01f + (params[paramIdx++] * 1.f),
-                0.5f + sqParam() * 30.f,
-                0.f, 0.1f, sampleRatef);
+            {  // one read per statement: the order of argument evaluation is unspecified
+                const float attack = 0.01f + (params[paramIdx++] * 1.f);
+                const float decay = 0.5f + sqParam() * 30.f;
+                v2PitchEnv.setup(attack, decay, 0.f, 0.1f, sampleRatef);
+            }
 
             v2PitchEmph = params[paramIdx++] * 5.f;
             v2rmGain = params[paramIdx++];

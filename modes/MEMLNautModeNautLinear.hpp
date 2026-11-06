@@ -26,7 +26,7 @@ public:
 
     void setupInterface() {
         interface.setup(kN_InputParams, NautLinearAudioApp<>::kN_Params, false /* no message screen */);
-        interface.setRVX1Override([this](float value) {
+        interface.setRVY1Override([this](float value) {
             audioAppNautLinear.setWetDryQueued(value);
         });
         interface.bindInterface(MEMLNAUT_INPUT_MODE, JOYSTICK_IS_4D);

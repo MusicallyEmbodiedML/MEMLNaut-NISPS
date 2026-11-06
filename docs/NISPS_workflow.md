@@ -78,14 +78,14 @@ The performer's interaction vocabulary:
 | Gesture | Control | Effect |
 |---|---|---|
 | **Explore** | Joystick / ML / MIDI input | Moves through the parameter space via the current mapping. |
-| **Positive reward** | Momentary A1 up (or MIDI CC1) | Stores `(input, action, reward=+1)`; resets dislike multiplier. |
-| **Negative reward** | Momentary A2 down (or MIDI CC2) | Stores/accumulates a negative experience at the current state; doubles dislike multiplier (cap 16). |
-| **Drag sound** | Joystick switch / Toggle A1 | Freezes the action, lets the performer move the input to a new location, then on release stores the held action there as a positive example ("put this sound *here*"). |
-| **Randomise / Scramble** | Momentary B1 up (or MIDI CC3) | Draws fresh random network weights — a whole new parameter landscape. |
-| **Jolt** | Momentary B2 down | Perturbs existing weights slightly — a nudge, not a reset. |
-| **Clear replay memory** | Toggle B1 (or MIDI CC4) | Forgets all stored experiences; resets multiplier. |
-| **Learning rate** | Knob RV Y1 | Scales training step size. |
-| **Reward scale** | Knob RV X1 | Scales stored reward magnitude (some modes repurpose this knob). |
+| **Positive reward** | Momentary B1 up (or MIDI CC1) | Stores `(input, action, reward=+1)`; resets dislike multiplier. |
+| **Negative reward** | Momentary B2 down (or MIDI CC2) | Stores/accumulates a negative experience at the current state; doubles dislike multiplier (cap 16). |
+| **Drag sound** | Joystick switch / Toggle B1 | Freezes the action, lets the performer move the input to a new location, then on release stores the held action there as a positive example ("put this sound *here*"). |
+| **Randomise / Scramble** | Momentary A1 up (or MIDI CC3) | Draws fresh random network weights — a whole new parameter landscape. |
+| **Jolt** | Momentary A2 down | Perturbs existing weights slightly — a nudge, not a reset. |
+| **Clear replay memory** | Toggle A2 (or MIDI CC4) | Forgets all stored experiences; resets multiplier. |
+| **Learning rate** | Knob RV X1 | Scales training step size. |
+| **Reward scale** | Knob RV Y1 | Scales stored reward magnitude (some modes repurpose this knob). |
 | **Exploration noise** | Knob RV Z1 | Sets OU noise sigma (0 = off). |
 
 ## 5. The learning algorithm (`optimise()`)
@@ -129,7 +129,7 @@ combined FX group), toggled from an on-screen `BlockSelectView`.
 - **Outputs:** 32 NN outputs → 32 assignable MIDI CCs. A full CC catalogue (per-instrument
   Ctrl/Tune/Decay/Level + global FX, from the TR-8S MIDI Implementation v1.02) is selectable
   on a `CCSelectView`; a sensible 32-CC default set is provided.
-- **Home + fade:** each CC has a stored **home** value (set with the gain knob). The RV X1
+- **Home + fade:** each CC has a stored **home** value (set with the gain knob). The RV Y1
   knob is repurposed from "reward scale" to a **modulation fade** — output =
   `home + fade·(NN − home)`. Fade 0 = static home values, fade 1 = full NN modulation. This
   home/fade blend is applied *only* on the way out to MIDI; the NN-outputs display and the

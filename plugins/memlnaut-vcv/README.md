@@ -16,15 +16,15 @@ the hardware's 200 Hz loop. Outputs ramp between ticks so they don't step.
 
 | control | |
 |---|---|
-| **YES** | like: store the current input and sound as a liked pair (the hardware's A1) |
-| **NO** | dislike; what it does is set by the dislike mode (A2) |
-| **JOLT** | plant new pseudo-liked sounds in the parts of the input space you haven't taught (B2) |
-| **SCRAM** | scramble the network (B1) |
+| **YES** | like: store the current input and sound as a liked pair (the hardware's B1) |
+| **NO** | dislike; what it does is set by the dislike mode (B2) |
+| **JOLT** | plant new pseudo-liked sounds in the parts of the input space you haven't taught (A2) |
+| **SCRAM** | scramble the network (A1) |
 | **DRAG** | hold: freeze the sound while you move the input; release: store it as a like where you let go (joystick switch) |
 | **FORGET** | empty the memory |
 | gate row | a trigger input under each button (≥1 V; DRAG is a gate, held while high) |
-| **LEARN** | learning rate, 0 = no learning (RV Y1) |
-| **REWARD** | reward scale (RV X1) |
+| **LEARN** | learning rate, 0 = no learning (RV X1) |
+| **REWARD** | reward scale (RV Y1) |
 | **EXPLORE** | exploration: the mapping drifts by itself, less near your likes (RV Z1) |
 | **Z**, **W** | the 3rd and 4th inputs, when their CV jacks are empty |
 | **X Y Z W** | CV inputs, 0..10 V (or −5..5 V, see the menu). X/Y override the on-screen pad |

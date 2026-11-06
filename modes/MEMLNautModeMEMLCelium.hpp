@@ -25,7 +25,7 @@ public:
     InterfaceRL_t interface;
     std::shared_ptr<InterfaceRL_t> interfacePtr;
 
-    bool sequencerPlaying = false;
+    bool sequencerPlaying = true;  // the audio app starts the sequencer playing
 
     FocusManager<MEMLCeliumAudioApp<>::kN_Params, 6> focusManager;
     MachineListeningMixin mlMixin;
@@ -36,7 +36,7 @@ public:
         // RL screen: label the outputs by section (see kParamGroupMask for the layout).
         interface.nnOutputsGraphView->setGroups({0, 21, 44, 63}, {"Seq", "V1", "V2", "V3"});
 
-        interface.setRVX1Override([this](float value) {
+        interface.setRVY1Override([this](float value) {
             float bpm = 30.f + value * 170.f;
             queue_try_add(&audioAppMEMLCelium.bpmControlQueue, &bpm);
         });
@@ -56,10 +56,11 @@ public:
             focusManager.applyInPlace(p);
         };
 
-        MEMLNaut::Instance()->setTogA2Callback([this](bool state) {
+        MEMLNaut::Instance()->setTogB2Callback([this](bool state) {
             if (state) {
                 sequencerPlaying = !sequencerPlaying;
-                queue_try_add(&audioAppMEMLCelium.sequencerControlQueue, &sequencerPlaying);
+                const int playing = sequencerPlaying ? 1 : 0;  // the queue holds an int
+                queue_try_add(&audioAppMEMLCelium.sequencerControlQueue, &playing);
             }
         });
     }

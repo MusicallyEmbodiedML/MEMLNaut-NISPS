@@ -32,7 +32,7 @@ public:
     void setupInterface() {
         interface.setup(kN_InputParams, BraykoreAudioApp<>::kN_Params);
 
-        interface.setRVX1Override([this](float value) {
+        interface.setRVY1Override([this](float value) {
             float bpm = 10.f + value * 100.f;
             queue_try_add(&audioAppBraykore.bpmQueue, &bpm);
         });
@@ -51,7 +51,7 @@ public:
         interface.setModeInfo("braykore", "Braykore");
         interfacePtr = make_non_owning(interface);
 
-        MEMLNaut::Instance()->setTogA2Callback([this](bool state) {
+        MEMLNaut::Instance()->setTogB2Callback([this](bool state) {
             if (state) {
                 sequencerPlaying = !sequencerPlaying;
                 int ctrl = sequencerPlaying ? 1 : 0;

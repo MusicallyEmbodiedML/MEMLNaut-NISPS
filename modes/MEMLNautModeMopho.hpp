@@ -13,116 +13,56 @@
 #include <memory>
 #include <array>
 #include <cstdio>
+#include <algorithm>
 
-// DSI Mopho MIDI CC options — grouped by synthesis section
-// CC numbers per the Mopho MIDI Implementation Chart; verify against manual if uncertain
+// DSI Mopho MIDI CC options, from the Dave Smith Instruments Mopho manual
+// ("MIDI Implementation", CC table). The Mopho family shares this map. Only these
+// parameters have CCs; the rest (LFOs, mod matrix, ...) are NRPN only. On the Mopho
+// set Global > MIDI Param Receive to CC or All.
 static const std::vector<CCOption> kMophoCCOptions = {
     // Performance
-    {  1, "Mod Wheel"      },
-    {  7, "Volume"         },
-    { 10, "Pan"            },
-    // OSC 1
-    { 15, "OSC1 Freq"      },
-    { 16, "OSC1 Fine"      },
-    { 17, "OSC1 Glide"     },
-    { 18, "OSC1 Shape"     },
-    { 19, "OSC1 PW"        },
-    // OSC 2
-    { 20, "OSC2 Freq"      },
-    { 21, "OSC2 Fine"      },
-    { 22, "OSC2 Glide"     },
-    { 23, "OSC2 Shape"     },
-    { 24, "OSC2 PW"        },
-    { 25, "OSC Sync"       },
+    {  1, "Mod Wheel"      }, {  7, "Volume"         },
+    { 14, "BPM"            }, { 15, "Clock Divide"   },
+    // Oscillators
+    { 20, "OSC1 Freq"      }, { 21, "OSC1 Fine"      }, { 22, "OSC1 Shape"     }, { 23, "Glide 1"        },
+    { 24, "OSC2 Freq"      }, { 25, "OSC2 Fine"      }, { 26, "OSC2 Shape"     }, { 27, "Glide 2"        },
     // Mixer
-    { 26, "OSC1 Level"     },
-    { 27, "OSC2 Level"     },
-    { 28, "Sub Osc Lvl"    },
-    { 29, "Sub Osc Shape"  },
-    { 30, "Noise Level"    },
-    { 31, "Feedback"       },
+    { 28, "Osc Mix"        }, { 29, "Noise Level"    }, { 30, "Sub Osc 1"      }, { 31, "Sub Osc 2"      },
     // Filter
-    { 74, "Cutoff"         },
-    { 71, "Resonance"      },
-    { 35, "Filt Env Amt"   },
-    { 36, "Filt Env Vel"   },
-    { 37, "Key Track"      },
-    { 38, "Audio Mod"      },
-    { 39, "4-Pole"         },
-    // Filter Envelope
-    { 40, "FE Attack"      },
-    { 41, "FE Decay"       },
-    { 42, "FE Sustain"     },
-    { 43, "FE Release"     },
-    { 44, "FE Delay"       },
+    {102, "Cutoff"         }, {103, "Resonance"      }, {104, "Filt Key Amt"   }, {105, "Filt Audio Mod" },
+    {106, "Filt Env Amt"   }, {107, "Filt Env Vel"   },
+    // Filter envelope
+    {108, "FE Delay"       }, {109, "FE Attack"      }, {110, "FE Decay"       }, {111, "FE Sustain"     },
+    {112, "FE Release"     },
     // Amp
-    { 45, "VCA Level"      },
-    { 46, "VCA Velocity"   },
-    // Amp Envelope
-    { 47, "AE Attack"      },
-    { 48, "AE Decay"       },
-    { 49, "AE Sustain"     },
-    { 50, "AE Release"     },
-    { 51, "AE Delay"       },
-    // LFO 1
-    { 52, "LFO1 Rate"      },
-    { 53, "LFO1 Shape"     },
-    { 54, "LFO1 Amount"    },
-    { 55, "LFO1 Dest"      },
-    { 56, "LFO1 Key Sync"  },
-    // LFO 2
-    { 57, "LFO2 Rate"      },
-    { 58, "LFO2 Shape"     },
-    { 59, "LFO2 Amount"    },
-    { 60, "LFO2 Dest"      },
-    { 61, "LFO2 Key Sync"  },
-    // LFO 3
-    { 62, "LFO3 Rate"      },
-    { 63, "LFO3 Shape"     },
-    { 65, "LFO3 Amount"    },
-    { 66, "LFO3 Dest"      },
-    { 67, "LFO3 Key Sync"  },
-    // LFO 4
-    { 68, "LFO4 Rate"      },
-    { 69, "LFO4 Shape"     },
-    { 70, "LFO4 Amount"    },
-    { 72, "LFO4 Dest"      },
-    { 73, "LFO4 Key Sync"  },
-    // Modulation matrix (slots 1–4: source, dest, amount)
-    { 75, "Mod1 Source"    },
-    { 76, "Mod1 Dest"      },
-    { 77, "Mod1 Amount"    },
-    { 78, "Mod2 Source"    },
-    { 79, "Mod2 Dest"      },
-    { 80, "Mod2 Amount"    },
-    { 81, "Mod3 Source"    },
-    { 82, "Mod3 Dest"      },
-    { 83, "Mod3 Amount"    },
-    { 84, "Mod4 Source"    },
-    { 85, "Mod4 Dest"      },
-    { 86, "Mod4 Amount"    },
-    // Misc
-    {100, "Pitch Bend Rng" },
-    {103, "BPM Tempo"      },
+    {113, "VCA Level"      }, {115, "Amp Env Amt"    }, {116, "Amp Velocity"   },
+    // Amp envelope
+    {117, "AE Delay"       }, {118, "AE Attack"      }, {119, "AE Decay"       }, { 75, "AE Sustain"     },
+    { 76, "AE Release"     },
+    // Envelope 3
+    { 85, "E3 Dest"        }, { 86, "E3 Amount"      }, { 87, "E3 Velocity"    }, { 88, "E3 Delay"       },
+    { 89, "E3 Attack"      }, { 90, "E3 Decay"       }, { 77, "E3 Sustain"     }, { 78, "E3 Release"     },
 };
 
-// Default 16: filter, both envelopes, LFO rates, OSC tuning, mod wheel, feedback
+// Default 32: every sound CC except volume, VCA level, tempo, the glides, the
+// velocity amounts and the envelope 3 destination.
 static const std::vector<uint8_t> kMophoDefaultCCs = {
-    74, 71,           // Cutoff, Resonance
-    40, 41, 42, 43,   // Filter Env ADSR
-    47, 48, 49, 50,   // Amp Env ADSR
-    52, 57,           // LFO1 Rate, LFO2 Rate
-    15, 20,           // OSC1 Freq, OSC2 Freq
-     1, 31            // Mod Wheel, Feedback
+    20, 21, 22, 24, 25, 26,            // OSC freq, fine, shape
+    28, 29, 30, 31,                    // Mixer
+    102, 103, 104, 105, 106,           // Filter
+    108, 109, 110, 111, 112,           // Filter envelope
+    115,                               // Amp env amount
+    117, 118, 119, 75, 76,             // Amp envelope
+    86, 88, 89, 90, 77, 78             // Envelope 3
 };
 
 // Focus group bitmasks
 static constexpr uint32_t kMophoFocusOSC  = (1u << 0);
 static constexpr uint32_t kMophoFocusMIX  = (1u << 1);
 static constexpr uint32_t kMophoFocusFILT = (1u << 2);
-static constexpr uint32_t kMophoFocusENV  = (1u << 3);
-static constexpr uint32_t kMophoFocusLFO  = (1u << 4);
-static constexpr uint32_t kMophoFocusMOD  = (1u << 5);
+static constexpr uint32_t kMophoFocusFENV = (1u << 3);
+static constexpr uint32_t kMophoFocusAENV = (1u << 4);   // amp envelope and VCA
+static constexpr uint32_t kMophoFocusENV3 = (1u << 5);
 
 class MEMLNautModeMopho {
 public:
@@ -148,9 +88,9 @@ public:
         focusManager.setGroupName(0, "OSC");
         focusManager.setGroupName(1, "MIX");
         focusManager.setGroupName(2, "FILT");
-        focusManager.setGroupName(3, "ENV");
-        focusManager.setGroupName(4, "LFO");
-        focusManager.setGroupName(5, "MOD");
+        focusManager.setGroupName(3, "FENV");
+        focusManager.setGroupName(4, "AENV");
+        focusManager.setGroupName(5, "ENV3");
 
         interface.paramTransformHook = [this](std::vector<float>& p) {
             focusManager.applyInPlace(p);
@@ -208,7 +148,7 @@ public:
 
         auto focusView = std::make_shared<BlockSelectView>(
             "Focus", TFT_DARKGREY, 7, 60, 60, TFT_WHITE,
-            std::vector<String>{"OSC", "MIX", "FILT", "ENV", "LFO", "MOD", "HOLD"},
+            std::vector<String>{"OSC", "MIX", "FILT", "FENV", "AENV", "ENV3", "HOLD"},
             TFT_GREENYELLOW, 2);
 
         focusView->SetOnSelectCallback([this, focusView, updateActiveDims](size_t id) {
@@ -230,9 +170,11 @@ public:
         ccView->setOptions(kMophoCCOptions);
 
         auto saved = loadCCAssignments();
+        // The view sorts the CCs, and its order is the NN output order, so use it.
         ccView->setSelectedCCs(saved);
-        midi_interf->SetParamCCNumbers(saved);
-        recomputeFocusGroups(saved, focusView, updateActiveDims);
+        const std::vector<uint8_t>& ordered = ccView->getSelectedCCs();
+        midi_interf->SetParamCCNumbers(ordered);
+        recomputeFocusGroups(ordered, focusView, updateActiveDims);
 
         ccView->setOnChangeCallback([this, focusView, updateActiveDims](const std::vector<uint8_t>& ccs) {
             midi_interf->SetParamCCNumbers(ccs);
@@ -249,18 +191,18 @@ public:
     void loopCore0() {}
 
 private:
-    static constexpr const char* kCCFile = "/mopho_cc.bin";
+    static constexpr const char* kCCFile = "/mopho_v2_cc.bin";
     uint32_t lastCCSendMs_ = 0;
     bool held_ = false;
 
     static uint32_t ccToGroupMask(uint8_t cc) {
-        if (cc >= 15 && cc <= 25)  return kMophoFocusOSC;
-        if (cc >= 26 && cc <= 31)  return kMophoFocusMIX;
-        if ((cc >= 35 && cc <= 39) || cc == 71 || cc == 74)  return kMophoFocusFILT;
-        if (cc >= 40 && cc <= 51)  return kMophoFocusENV;
-        if (cc >= 52 && cc <= 73)  return kMophoFocusLFO;
-        if (cc >= 75 && cc <= 86)  return kMophoFocusMOD;
-        return 0;  // performance CCs (1, 7, 10, 100, 103) — always active
+        if (cc >= 20 && cc <= 27)                 return kMophoFocusOSC;
+        if (cc >= 28 && cc <= 31)                 return kMophoFocusMIX;
+        if (cc >= 102 && cc <= 107)               return kMophoFocusFILT;
+        if (cc >= 108 && cc <= 112)               return kMophoFocusFENV;
+        if ((cc >= 113 && cc <= 119) || cc == 75 || cc == 76) return kMophoFocusAENV;
+        if ((cc >= 85 && cc <= 90) || cc == 77 || cc == 78)   return kMophoFocusENV3;
+        return 0;  // mod wheel, volume, BPM, clock divide: always active
     }
 
     void recomputeFocusGroups(const std::vector<uint8_t>& ccs,

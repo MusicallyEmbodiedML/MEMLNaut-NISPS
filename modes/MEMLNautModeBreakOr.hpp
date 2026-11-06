@@ -37,7 +37,7 @@ public:
     void setupInterface() {
         interface.setup(kN_InputParams, BreakOrAudioApp<>::kN_Params);
 
-        interface.setRVX1Override([this](float value) {
+        interface.setRVY1Override([this](float value) {
             if (clockMode == BreakOrAudioApp<>::INTERNAL) {
                 float bpm = 30.f + value * 170.f;
                 queue_try_add(&audioAppBreakOr.bpmQueue, &bpm);
@@ -56,8 +56,8 @@ public:
         interface.setModeInfo("breakor", "BreakOr");
         interfacePtr = make_non_owning(interface);
 
-        MEMLNaut::Instance()->setTogA2Callback([this](bool state) { // scr_ref no longer captured directly
-            Serial.println(state ? "TogA2 ON" : "TogA2 OFF");
+        MEMLNaut::Instance()->setTogB2Callback([this](bool state) { // scr_ref no longer captured directly
+            Serial.println(state ? "TogB2 ON" : "TogB2 OFF");
             if (state) {
                 sequencerPlaying = !sequencerPlaying;
                 queue_try_add(&audioAppBreakOr.sequencerControlQueue, &sequencerPlaying);

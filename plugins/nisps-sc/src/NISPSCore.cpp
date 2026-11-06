@@ -926,13 +926,23 @@ bool NISPSCore::trainSynth(float lr) {
             synthBurst_ = false;
     }
     training_pair_t ts;
-    ts.first.reserve(synth_.size());
-    ts.second.reserve(synth_.size());
+    ts.first.reserve(synth_.size() + kSynthLikeAnchors);
+    ts.second.reserve(synth_.size() + kSynthLikeAnchors);
     for (const auto& sp : synth_) {
         ts.first.push_back(sp.input);
         ts.second.push_back(sp.target);
     }
-    mlp_.TrainBatch(ts, lr * (synthBurst_ ? kSynthBurstLR : kSynthHoldLR), 1, synth_.size(), 0.f, false);
+    // Likes as anchors in the same batch, so the jolt doesn't drag them along.
+    std::vector<size_t> likes;
+    for (size_t i = 0; i < replayMem_.size(); i++)
+        if (replayMem_.getItem(i).reward > 0.f) likes.push_back(i);
+    for (size_t k = 0; k < kSynthLikeAnchors && k < likes.size(); k++) {
+        if (likes.size() > kSynthLikeAnchors)
+            std::swap(likes[k], likes[k + static_cast<size_t>(rand()) % (likes.size() - k)]);
+        ts.first.push_back(replayMem_.getItem(likes[k]).input);
+        ts.second.push_back(likeTarget(likes[k]));
+    }
+    mlp_.TrainBatch(ts, lr * (synthBurst_ ? kSynthBurstLR : kSynthHoldLR), 1, ts.first.size(), 0.f, false);
     return synthBurst_;
 }
 

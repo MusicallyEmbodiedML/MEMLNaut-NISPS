@@ -13,70 +13,51 @@
 #include <memory>
 #include <array>
 #include <cstdio>
+#include <algorithm>
 
 // Erica Synths x 112dB Steampipe MIDI CC options.
 //
-// Factory default CC assignments are sequential from CC 70.  The first five
-// (Envelope section, CCs 70-74) are confirmed from the device's MIDI CC MAP
-// screenshot in the V3 manual.  The remainder follow the sequential pattern
-// inferred from the firmware and the parameter order in the manual.
-//
-// CC assignments can be remapped on the Steampipe itself via Settings → MIDI
-// → MIDI CC MAP.  If the user has changed factory defaults on the device the
-// assignments below must be adjusted to match.
+// The rows are the Steampipe's own MIDI CC MAP list (Settings > MIDI CC MAP), in
+// order, as stored in its firmware v1.1 (Envelope, Steam, Pipe, filters, Glide,
+// Reverb, Volume; the five LFO rows are left out). CC = 70 + row. The manual
+// confirms rows 0-4 (CC 70-74) only; the factory numbers of the later rows are not
+// published, so check them on the Steampipe's MIDI CC MAP page and set any that
+// differ. The map is editable on the device.
 static const std::vector<CCOption> kSteampipeCCOptions = {
-    // Envelope (factory CCs 70-74, confirmed from manual screenshot)
-    { 70, "Env Attack"    },
-    { 71, "Env Decay"     },
-    { 72, "Env Sustain"   },
-    { 73, "Env Release"   },
-    { 74, "Env Scaling"   },
-    // Steam / generator (factory CCs 75-81, inferred sequential)
-    { 75, "Stm Velocity"  },
-    { 76, "Stm DC/Noise"  },
-    { 77, "Stm Cutoff"    },
-    { 78, "Stm Resonance" },
-    { 79, "Stm KTrack"    },
-    { 80, "Stm Env Amt"   },
-    { 81, "Stm Gain"      },
-    // Pipe / resonator (factory CCs 82-90, inferred sequential)
-    { 82, "Pipe Push"     },
-    { 83, "Pipe SoftHard" },
-    { 84, "Pipe Symmetry" },
-    { 85, "Pipe FineTune" },
-    { 86, "Pipe Harmonic" },
-    { 87, "Pipe SpltPnt"  },
-    { 88, "Pipe FB Decay" },
-    { 89, "Pipe FB Rel"   },
-    { 90, "Pipe Volume"   },
-    // Reverberator (factory CCs 91-101, inferred sequential)
-    { 91, "Rvb Dry/Wet"   },
-    { 92, "Rvb Volume"    },
-    { 93, "Rvb Spread"    },
-    { 94, "Rvb Room"      },
-    { 95, "Rvb Spin"      },
-    { 96, "Rvb HF Damp"   },
-    { 97, "Rvb LF Damp"   },
-    // Extra slots to cover any params beyond CC 97
-    { 98, "Param 29"      },
-    { 99, "Param 30"      },
-    {100, "Param 31"      },
-    {101, "Param 32"      },
+    // Envelope
+    { 70, "Env Attack"     }, { 71, "Env Decay"      }, { 72, "Env Sustain"    }, { 73, "Env Release"    },
+    { 74, "Env Scaling"    }, { 75, "Env Velocity"   }, { 76, "Legato"         },
+    // Steam / generator
+    { 77, "Stm DC"         }, { 78, "Stm Cutoff"     }, { 79, "Stm Resonance"  }, { 80, "Stm KTrack"     },
+    { 81, "Stm Envelope"   }, { 82, "Stm Gain"       }, { 83, "Stm 1-Pole"     },
+    // Pipe / resonator
+    { 84, "Pipe Push"      }, { 85, "Pipe Decay"     }, { 86, "Pipe Release"   }, { 87, "Pipe SoftHard"  },
+    { 88, "Pipe Symmetry"  }, { 89, "Pipe Tune"      }, { 90, "Pipe Fine"      }, { 91, "Pipe Harmonics" },
+    { 92, "Pipe SplitPnt"  }, { 93, "Pipe Split"     }, { 94, "Pipe Polarity"  },
+    { 95, "HighPass"       }, { 96, "LowPass"        },
+    // Glide
+    { 97, "Detune"         }, { 98, "Glide"          }, { 99, "Glide Time"     },
+    // Reverb
+    {100, "Rvb Bass"       }, {101, "Rvb Treble"     }, {102, "Rvb Size"       }, {103, "Rvb Spin"       },
+    {104, "Rvb Mix"        }, {105, "Rvb Spread"     },
+    // Output
+    {106, "Volume"         },
 };
 
-// Default 16: spread across all four sections to cover the most expressive controls
+// Default 16 (this mode has 16 outputs): one spread across the sections.
 static const std::vector<uint8_t> kSteampipeDefaultCCs = {
-    70, 71, 73,       // Env Attack, Decay, Release
-    77, 78, 80, 81,   // Steam Cutoff, Resonance, Env Amt, Gain
-    82, 86, 88, 89,   // Pipe Push, Harmonics, FB Decay, FB Release
-    91, 93, 94, 95, 90 // Reverb DryWet, Spread, Room, Spin + Pipe Volume
+    70, 71, 73,                  // Env attack, decay, release
+    78, 79, 81, 82,              // Steam cutoff, resonance, envelope, gain
+    84, 85, 86, 91,              // Pipe push, decay, release, harmonics
+    102, 103, 104, 105,          // Reverb size, spin, mix, spread
+    96                           // LowPass
 };
 
 // Focus group bitmasks — one per section
 static constexpr uint32_t kSteampipeFocusENV   = (1u << 0);  // Envelope
 static constexpr uint32_t kSteampipeFocusSTEAM = (1u << 1);  // Steam / generator
-static constexpr uint32_t kSteampipeFocusPIPE  = (1u << 2);  // Pipe / resonator
-static constexpr uint32_t kSteampipeFocusREVERB= (1u << 3);  // Reverberator
+static constexpr uint32_t kSteampipeFocusPIPE  = (1u << 2);  // Pipe, filters, glide
+static constexpr uint32_t kSteampipeFocusREVERB= (1u << 3);  // Reverb
 
 class MEMLNautModeSteampipe {
 public:
@@ -183,9 +164,11 @@ public:
         ccView->setOptions(kSteampipeCCOptions);
 
         auto saved = loadCCAssignments();
+        // The view sorts the CCs, and its order is the NN output order, so use it.
         ccView->setSelectedCCs(saved);
-        midi_interf->SetParamCCNumbers(saved);
-        recomputeFocusGroups(saved, focusView, updateActiveDims);
+        const std::vector<uint8_t>& ordered = ccView->getSelectedCCs();
+        midi_interf->SetParamCCNumbers(ordered);
+        recomputeFocusGroups(ordered, focusView, updateActiveDims);
 
         ccView->setOnChangeCallback([this, focusView, updateActiveDims](const std::vector<uint8_t>& ccs) {
             midi_interf->SetParamCCNumbers(ccs);
@@ -202,16 +185,16 @@ public:
     void loopCore0() {}
 
 private:
-    static constexpr const char* kCCFile = "/steampipe_cc.bin";
+    static constexpr const char* kCCFile = "/steampipe_v2_cc.bin";
     uint32_t lastCCSendMs_ = 0;
     bool held_ = false;
 
     static uint32_t ccToGroupMask(uint8_t cc) {
-        if (cc >= 70 && cc <= 74) return kSteampipeFocusENV;
-        if (cc >= 75 && cc <= 81) return kSteampipeFocusSTEAM;
-        if (cc >= 82 && cc <= 90) return kSteampipeFocusPIPE;
-        if (cc >= 91 && cc <= 101) return kSteampipeFocusREVERB;
-        return 0;
+        if (cc >= 70 && cc <= 76)  return kSteampipeFocusENV;
+        if (cc >= 77 && cc <= 83)  return kSteampipeFocusSTEAM;
+        if (cc >= 84 && cc <= 99)  return kSteampipeFocusPIPE;
+        if (cc >= 100 && cc <= 105) return kSteampipeFocusREVERB;
+        return 0;  // Volume: always active
     }
 
     void recomputeFocusGroups(const std::vector<uint8_t>& ccs,

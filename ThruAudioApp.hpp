@@ -11,6 +11,7 @@
 
 #include <span>
 #include "voicespaces/VoiceSpaces.hpp"
+#include "src/memllib/synth/maximilian.h" // maxiBiquad, maxiSettings
 
 
 

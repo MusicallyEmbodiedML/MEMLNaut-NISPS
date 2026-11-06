@@ -51,7 +51,7 @@ public:
 
     stereosample_t __force_inline Process(const stereosample_t x) override
     {
-        // Drain start/stop queue here so TogA2 works without waiting for NN params
+        // Drain start/stop queue here so TogB2 works without waiting for NN params
         int ctrl;
         if (queue_try_remove(&sequencerControlQueue, &ctrl)) {
             sequencerPlaying = ctrl == 1;

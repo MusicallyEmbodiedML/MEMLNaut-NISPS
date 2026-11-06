@@ -13,6 +13,7 @@
 #include <memory>
 #include <array>
 #include <cstdio>
+#include <algorithm>
 
 // Erica Synths Resonant Filterbank MIDI CC options.
 // CCs 70-83 are "active-mode dependent" on the device — the same CC number
@@ -194,9 +195,11 @@ public:
         ccView->setOptions(kEricaFBankCCOptions);
 
         auto saved = loadCCAssignments();
+        // The view sorts the CCs, and its order is the NN output order, so use it.
         ccView->setSelectedCCs(saved);
-        midi_interf->SetParamCCNumbers(saved);
-        recomputeFocusGroups(saved, focusView, updateActiveDims);
+        const std::vector<uint8_t>& ordered = ccView->getSelectedCCs();
+        midi_interf->SetParamCCNumbers(ordered);
+        recomputeFocusGroups(ordered, focusView, updateActiveDims);
 
         ccView->setOnChangeCallback([this, focusView, updateActiveDims](const std::vector<uint8_t>& ccs) {
             midi_interf->SetParamCCNumbers(ccs);
