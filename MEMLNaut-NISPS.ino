@@ -34,11 +34,12 @@
 // #define MODE_NAUTLINEAR
 // #define MODE_SAXFX
 // #define MODE_CHUNKYBITS
-#define MODE_INFINIBITS
+// #define MODE_INFINIBITS
 // #define MODE_BUNTY
 // #define MODE_ELYSIAMORFS
 // #define MODE_MEMLCELIUM
 // #define MODE_MIXMASTERMEML
+#define MODE_MEMLACIIID
 // #define MODE_D50
 // #define MODE_TR6S   // also a preset in MODE_PARAMSITE
 // #define MODE_TR8S   // also a preset in MODE_PARAMSITE
@@ -112,6 +113,10 @@
 #ifdef MODE_MIXMASTERMEML
   #include "modes/MEMLNautModeMixMasterMEML.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeMixMasterMEML
+#endif
+#ifdef MODE_MEMLACIIID
+  #include "modes/MEMLNautModeMEMLAciiid.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeMEMLAciiid
 #endif
 #ifdef MODE_D50
   #include "modes/MEMLNautModeD50.hpp"

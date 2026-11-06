@@ -8,8 +8,9 @@
 
 // RatioSeqEngine variant for MixMasterMEML. Each sequence splits its cycle into NNOTES
 // segments by integer ratios (one note per segment, as in RatioSeqEngine), but instead
-// of an accent pattern every note has its own level, chosen by one parameter: the bottom
-// third of the range is a rest, the middle third low (kLowLevel), the top third full.
+// of an accent pattern every note has its own level, chosen by one parameter: by default
+// the bottom third of the range is a rest, the middle third low (kLowLevel), the top third
+// full. Each sequence can change those bands and the low level (see SeqState).
 // Rests never trigger, so patterns can thin out to nothing.
 template<size_t NSEQUENCES, size_t NNOTES = 3>
 class GlitchSeqEngine {
@@ -26,6 +27,14 @@ public:
         float phaseOffset = 0.f;
         float pulseWidth = 0.5f;
         bool lastTrig = false;
+        int currentNote = 0;  // the latest note reached, rests included
+        // The cycles per bar the speed param chooses from. Repeat an entry to favour it.
+        std::array<float, 4> speedMuls{1.f, 2.f, 4.f, 8.f};
+        // How a note's level param maps to its level: below restBelow is a rest, below
+        // lowBelow plays at lowLevel, and above that at full level.
+        float restBelow = 1.f / 3.f;
+        float lowBelow = 2.f / 3.f;
+        float lowLevel = kLowLevel;
     };
     std::array<SeqState, NSEQUENCES> states;
 
@@ -76,7 +85,10 @@ public:
                 const float seqPhasor = fmodf(barPhasor * seq.phasorMul + seq.phaseOffset, 1.f);
                 float level = 0.f;
                 const int note = activeNote(seq, seqPhasor);
-                if (note >= 0) level = seq.levels[note];
+                if (note >= 0) {
+                    level = seq.levels[note];
+                    seq.currentNote = note;
+                }
                 const bool trig = level > 0.f;
 
                 if (trig && !seq.lastTrig) {
@@ -93,7 +105,7 @@ public:
     }
 
     // Call from loop() (not the audio path). Consumes kParamsPerSeq params per sequence
-    // from startIdx: NNOTES ratios (1..3), speed (x1/2/4/8 per bar), offset (whole
+    // from startIdx: NNOTES ratios (1..3), speed (see speedMuls), offset (whole
     // beats), NNOTES levels (rest / low / full).
     template<size_t NPARAMS>
     void updateParams(const std::array<float, NPARAMS>& params, size_t startIdx) {
@@ -102,7 +114,7 @@ public:
     }
 
     // One sequence's kParamsPerSeq params from startIdx (so a sequence's params needn't
-    // sit next to the others'): NNOTES ratios (1..3), speed (x1/2/4/8 per bar), offset
+    // sit next to the others'): NNOTES ratios (1..3), speed (see speedMuls), offset
     // (whole beats), NNOTES levels (rest / low / full).
     template<size_t NPARAMS>
     void updateSeqParams(size_t seqIdx, const std::array<float, NPARAMS>& params, size_t startIdx) {
@@ -115,13 +127,12 @@ public:
         }
         v.ratioSum = sum;
 
-        static constexpr float muls[4] = {1.f, 2.f, 4.f, 8.f};
-        v.phasorMul = muls[static_cast<int>(params[p++] * 3.999999f)];
+        v.phasorMul = v.speedMuls[static_cast<int>(params[p++] * 3.999999f)];
         v.phaseOffset = static_cast<int>(params[p++] * timeSigBeats) / timeSigBeats;
 
         for (size_t i = 0; i < NNOTES; i++) {
-            const int band = static_cast<int>(params[p++] * 2.999999f);  // 0, 1, 2
-            v.levels[i] = band == 0 ? 0.f : (band == 1 ? kLowLevel : 1.f);
+            const float x = params[p++];
+            v.levels[i] = x < v.restBelow ? 0.f : (x < v.lowBelow ? v.lowLevel : 1.f);
         }
     }
 
