@@ -1,0 +1,148 @@
+/* Layout: the MEMLNaut panel as one board: screen | switches + knobs | joystick,
+   stacking to one column on phones. Colours follow the hardware: PCB green, gold
+   rims, lavender caps, a black TFT. Single dark look by choice, on the site's teal. */
+:root {
+  color-scheme: dark;
+  --ground: #00313a;
+  --ink: #eef5e0;
+  --muted: #9fb8b8;
+  --pcb: #3d4f43;
+  --pcb-hi: #55665a;
+  --pcb-ink: #eef2ee;
+  --pcb-muted: #c6d0c8;
+  --rim: #d6b92a;
+  --cap: #c9cbe0;
+  --cap-dark: #2c2f3e;
+  --tft: #0d1215;
+  --tft-ink: #8fa49a;
+  --like: #5fd38b;
+  --dislike: #ff7a6e;
+  --shape: #f5b04a;
+  --hold: #6cb6f5;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--ground); color: var(--ink); font: 15px/1.5 var(--sans); }
+.wrap {
+  max-width: 1200px; margin: 0 auto; padding-block: 24px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 20px;
+}
+.top { display: grid; gap: 6px; }
+.eyebrow { margin: 0; font: 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 0; font-size: clamp(28px, 4vw, 40px); line-height: 1.1; text-wrap: balance; }
+h2 { margin: 0 0 8px; font-size: 20px; }
+.lede { margin: 0; max-width: 68ch; color: var(--muted); }
+a { color: #7fd6db; }
+kbd { font: 11px var(--mono); padding: 1px 4px; border: 1px solid currentColor; border-radius: 3px; opacity: .7; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, .dial:focus-visible, .stick:focus-visible, input:focus-visible { outline: 2px solid var(--hold); outline-offset: 2px; }
+
+/* --- the board --- */
+.panel {
+  display: grid; gap: 28px; align-items: start;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, .9fr);
+  padding: 24px; border-radius: 8px;
+  background: radial-gradient(ellipse at 50% 40%, var(--pcb-hi), var(--pcb) 70%);
+  color: var(--pcb-ink);
+}
+@media (max-width: 900px) {
+  .panel { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+  .stick-col { order: 2; }
+  .controls-col { order: 3; }
+}
+
+/* screen */
+.screen-col { display: grid; gap: 8px; min-width: 0; }
+.screen { position: relative; aspect-ratio: 4 / 3; max-width: 100%; background: var(--tft); border: 3px solid #0a0d0f; border-radius: 4px; overflow: hidden; }
+#tft { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+.page { position: absolute; inset: 0; padding: 4% 5%; background: var(--tft); color: var(--tft-ink); display: grid; align-content: start; gap: 4%; font-family: var(--mono); font-size: clamp(11px, 1.5vw, 14px); }
+.page-title { margin: 0; color: var(--pcb-ink); }
+.page-note { margin: 0; font-size: .85em; }
+.blocks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.blocks.slots { grid-template-columns: repeat(4, 1fr); }
+.blocks button, .list button {
+  border: 1px solid #2d3d36; background: #151d1a; border-radius: 3px; padding: 10px 4px; color: var(--tft-ink); font-family: var(--mono); font-size: inherit;
+}
+.blocks button.on { background: #b9f04a; color: #10161a; border-color: #b9f04a; }
+.blocks.three button.on { background: #3fae6c; border-color: #3fae6c; color: #08110c; }
+.blocks.slots button { padding: 8px 2px; min-height: 3.2em; line-height: 1.2; }
+.blocks.slots button.used { color: var(--pcb-ink); border-color: #4f6a5e; }
+.blocks.slots button.current { background: #3b8fd6; border-color: #3b8fd6; color: #fff; }
+.list { display: grid; gap: 4px; }
+.list button { text-align: left; padding: 6px 8px; }
+.list button.on { border-color: var(--rim); color: var(--pcb-ink); }
+.list button small { display: block; opacity: .75; }
+.slot-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.seg { display: inline-flex; border: 1px solid #2d3d36; border-radius: 3px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 3px 10px; color: var(--tft-ink); font-family: var(--mono); }
+.seg button.on { background: var(--pcb-ink); color: #10161a; }
+.start { position: absolute; inset: 0; display: grid; place-content: center; gap: 10px; text-align: center; padding: 16px; background: rgba(8, 12, 14, .82); }
+.start p { margin: 0; color: var(--tft-ink); font-size: 13px; max-width: 32ch; }
+.start button { justify-self: center; padding: 12px 26px; border-radius: 999px; border: 2px solid var(--rim); background: var(--cap); color: var(--cap-dark); font-weight: 700; font-size: 17px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.tabs button { flex: 1 1 auto; padding: 5px 8px; border: 1px solid rgba(238, 242, 238, .25); background: rgba(0, 0, 0, .18); border-radius: 3px; font: 13px var(--mono); }
+.tabs button.on { background: var(--pcb-ink); color: #10161a; }
+.message { margin: 0; min-height: 1.5em; font: 13px var(--mono); color: var(--pcb-muted); }
+
+/* switches */
+.controls-col { display: grid; gap: 28px; min-width: 0; }
+.switches { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.sw-col { display: grid; gap: 12px; min-width: 0; }
+.sw-label { font: 600 18px var(--mono); text-align: center; }
+.cap { font: 11px var(--mono); color: var(--pcb-muted); padding-left: 6px; }
+.sw-group { display: grid; gap: 4px; padding: 6px; border-radius: 18px; min-width: 0; background: rgba(0, 0, 0, .18); }
+.sw {
+  display: flex; align-items: center; gap: 6px; padding: 9px 12px; border-radius: 16px;
+  border: 2px solid var(--rim); background: var(--cap); color: var(--cap-dark);
+  font-weight: 600; text-align: left; touch-action: none; user-select: none; min-width: 0;
+}
+.sw span { width: 1em; color: var(--cap-dark); }
+.sw kbd { margin-left: auto; }
+.sw.like { box-shadow: inset 4px 0 var(--like); }
+.sw.dislike { box-shadow: inset 4px 0 var(--dislike); }
+.sw.shape { box-shadow: inset 4px 0 var(--shape); }
+.sw.hold { box-shadow: inset 4px 0 var(--hold); }
+.sw:active, .sw.down { background: #9ea1bb; transform: translateY(1px); }
+.sw.latch { box-shadow: inset 4px 0 var(--pcb-muted); }
+.sw.latch.on { background: #d9f2e0; box-shadow: inset 4px 0 var(--like); }
+.sw.flash { background: #fff; }
+@media (max-width: 420px) { .sw kbd { display: none; } }
+
+/* knobs */
+.knobs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.knob { display: grid; justify-items: center; gap: 4px; }
+.knob b { font: 600 15px var(--mono); }
+.kv { font: 12px var(--mono); color: var(--pcb-muted); font-variant-numeric: tabular-nums; text-align: center; min-height: 2.6em; }
+.dial {
+  --a: 0deg; position: relative; width: 56px; height: 56px; border-radius: 50%;
+  background: var(--cap); border: 4px solid var(--rim); touch-action: none; cursor: ns-resize;
+}
+.dial::after { content: ""; position: absolute; left: 50%; top: 5px; width: 4px; height: 18px; margin-left: -2px; border-radius: 2px; background: var(--cap-dark); transform-origin: 2px 19px; transform: rotate(var(--a)); }
+
+/* joystick */
+.stick-col { display: grid; gap: 10px; justify-items: center; min-width: 0; width: 100%; }
+.stick {
+  position: relative; width: min(100%, 260px); aspect-ratio: 1; max-width: 100%; border-radius: 50%;
+  background: radial-gradient(circle, #aeb1c8 0 22%, var(--cap) 23%); touch-action: none; cursor: grab;
+}
+.stick:active { cursor: grabbing; }
+.cross { position: absolute; inset: 15%; background:
+  linear-gradient(var(--cap-dark), var(--cap-dark)) center / 2px 100% no-repeat,
+  linear-gradient(var(--cap-dark), var(--cap-dark)) center / 100% 2px no-repeat; opacity: .35; }
+.puck { position: absolute; width: 22%; aspect-ratio: 1; border-radius: 50%; background: var(--cap-dark); left: 50%; top: 50%; transform: translate(-50%, -50%); box-shadow: 0 2px 6px rgba(0, 0, 0, .4); }
+.stick.dragging .puck { box-shadow: 0 0 0 4px var(--hold); }
+.axis { display: grid; grid-template-columns: 5em 1fr; align-items: center; gap: 8px; width: min(100%, 260px); font: 13px var(--mono); }
+.axis input { width: 100%; accent-color: var(--rim); }
+.hint { margin: 0; font-size: 13px; color: var(--pcb-muted); text-align: center; }
+
+/* help */
+.help { max-width: 72ch; }
+.help ol { padding-left: 1.3em; margin: 0 0 12px; }
+.help p { margin: 0 0 10px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

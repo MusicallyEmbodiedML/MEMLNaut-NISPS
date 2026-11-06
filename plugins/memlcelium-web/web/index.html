@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MEMLCelium</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">MEMLNaut · NISPS firmware in the browser</p>
+      <h1>MEMLCelium</h1>
+    </div>
+    <p class="lede">Three formant voices and a ratio sequencer, mapped from the joystick by a small neural network. Move the stick, then tell it what you like.</p>
+  </header>
+
+  <section class="panel" aria-label="MEMLNaut panel">
+    <!-- screen -->
+    <div class="screen-col">
+      <div class="screen" id="screen">
+        <canvas id="tft" width="320" height="240" aria-label="Network outputs"></canvas>
+        <div class="page" id="page-focus" hidden>
+          <p class="page-title">Focus: only these groups change</p>
+          <div class="blocks" id="focus-blocks"></div>
+          <p class="page-note">Nothing selected = everything changes.</p>
+        </div>
+        <div class="page" id="page-enable" hidden>
+          <p class="page-title">Enable voices</p>
+          <div class="blocks three" id="enable-blocks"></div>
+        </div>
+        <div class="page" id="page-no" hidden>
+          <p class="page-title">Dislike mode</p>
+          <div class="list" id="dislike-list"></div>
+        </div>
+        <div class="page" id="page-slots" hidden>
+          <div class="slot-head">
+            <p class="page-title">Model slots</p>
+            <div class="seg" role="group" aria-label="Slot action">
+              <button id="slot-save" class="on" type="button">Save</button>
+              <button id="slot-load" type="button">Load</button>
+            </div>
+          </div>
+          <div class="blocks slots" id="slot-blocks"></div>
+          <p class="page-note">Slots are kept in this browser.</p>
+        </div>
+        <div class="start" id="start">
+          <button id="start-btn" type="button">Start sound</button>
+          <p>Use headphones or speakers. The sequencer starts playing straight away.</p>
+        </div>
+      </div>
+      <nav class="tabs" aria-label="Screens" id="tabs">
+        <button data-page="rl" class="on" type="button">RL</button>
+        <button data-page="map" type="button">Map</button>
+        <button data-page="focus" type="button">Focus</button>
+        <button data-page="enable" type="button">Enable</button>
+        <button data-page="no" type="button">No</button>
+        <button data-page="slots" type="button">Slots</button>
+      </nav>
+      <p class="message" id="message" aria-live="polite">Press Start sound.</p>
+    </div>
+
+    <!-- switches and knobs -->
+    <div class="controls-col">
+      <div class="switches">
+        <div class="sw-col">
+          <span class="sw-label">A</span>
+          <div class="sw-group" aria-label="Momentary A"><span class="cap">momentary</span>
+            <button class="sw shape" data-gesture="2" type="button"><span>▲</span>Scramble <kbd>S</kbd></button>
+            <button class="sw shape" data-gesture="3" type="button"><span>▼</span>Jolt <kbd>J</kbd></button>
+          </div>
+          <div class="sw-group" aria-label="Toggle A"><span class="cap">toggle</span>
+            <button class="sw dislike" data-gesture="4" type="button"><span>▲</span>Forget all <kbd>⇧F</kbd></button>
+          </div>
+        </div>
+        <div class="sw-col">
+          <span class="sw-label">B</span>
+          <div class="sw-group" aria-label="Momentary B"><span class="cap">momentary</span>
+            <button class="sw like" data-gesture="0" type="button"><span>▲</span>Like <kbd>L</kbd></button>
+            <button class="sw dislike" data-gesture="1" type="button"><span>▼</span>Dislike <kbd>D</kbd></button>
+          </div>
+          <div class="sw-group" aria-label="Toggle B"><span class="cap">toggle</span>
+            <button class="sw hold" id="drag" type="button"><span>▲</span>Drag (hold) <kbd>Space</kbd></button>
+            <button class="sw latch on" id="play" type="button" aria-pressed="true"><span>▼</span>Sequencer <kbd>P</kbd></button>
+          </div>
+        </div>
+      </div>
+      <div class="knobs">
+        <div class="knob" data-knob="1" data-value="0.5"><div class="dial" role="slider" tabindex="0" aria-label="Knob X, learning rate"></div><b>X</b><span class="kv"></span></div>
+        <div class="knob" data-knob="0" data-value="0.529"><div class="dial" role="slider" tabindex="0" aria-label="Knob Y, tempo"></div><b>Y</b><span class="kv"></span></div>
+        <div class="knob" data-knob="2" data-value="0"><div class="dial" role="slider" tabindex="0" aria-label="Knob Z, exploration"></div><b>Z</b><span class="kv"></span></div>
+        <div class="knob" data-knob="3" data-value="0.5"><div class="dial" role="slider" tabindex="0" aria-label="Knob G, volume"></div><b>G</b><span class="kv"></span></div>
+      </div>
+    </div>
+
+    <!-- joystick -->
+    <div class="stick-col">
+      <div class="stick" id="stick" role="slider" tabindex="0" aria-label="Joystick X and Y" aria-valuetext="centre">
+        <div class="cross" aria-hidden="true"></div>
+        <div class="puck" id="puck"></div>
+      </div>
+      <label class="axis">Z twist <input id="z" type="range" min="0" max="1" step="0.001" value="0.5"></label>
+      <label class="axis">W <input id="w" type="range" min="0" max="1" step="0.001" value="0.5"></label>
+      <p class="hint">Drag the stick. Double-click to centre. A gamepad works too.</p>
+    </div>
+  </section>
+
+  <section class="help">
+    <h2>How to play</h2>
+    <ol>
+      <li>Press <b>Start sound</b>. The sequencer is already running.</li>
+      <li>Move the joystick. Each position gives a different pattern and sound.</li>
+      <li>When you hear something you like, press <b>Like</b>. Do this in three or four places.</li>
+      <li>Press <b>Dislike</b> to push a sound away. Hold <b>Drag</b>, move the stick, then let go to put the current sound somewhere else.</li>
+      <li><b>Scramble</b> gives a whole new network. <b>Jolt</b> adds new sounds where you haven't taught it yet.</li>
+      <li>Turn up <b>Z</b> to let the sound wander. <b>X</b> is how fast it learns, <b>Y</b> is the tempo.</li>
+    </ol>
+    <p>Keys: <kbd>L</kbd> like, <kbd>D</kbd> dislike, <kbd>S</kbd> scramble, <kbd>J</kbd> jolt, hold <kbd>Space</kbd> to drag, <kbd>P</kbd> start/stop, <kbd>Shift</kbd>+<kbd>F</kbd> forget, <kbd>1</kbd>–<kbd>6</kbd> screens. Gamepad: left stick X/Y, right stick Z/W, A like, B dislike, X drag (hold), Y jolt.</p>
+    <p>This runs the firmware's own synth code and the NISPS learning engine, compiled to WebAssembly. More about MEMLCelium on the <a href="../../memlnaut/firmwares/memlcelium">firmware page</a>.</p>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

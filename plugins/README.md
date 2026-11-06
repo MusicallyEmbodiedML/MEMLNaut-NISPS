@@ -15,6 +15,11 @@ from a laptop.
   `NISPSCore` mapping 4 inputs (an on-screen XY pad plus Z/W, or CV) to 32 CV
   outputs, with the hardware's screen redrawn on the panel and the gestures
   as buttons and gate inputs. Also compiles the engine out of `nisps-sc/`.
+- **`memlcelium-web/`** — MODE_MEMLCELIUM in the browser: the firmware's own
+  `MEMLCeliumAudioApp.hpp`, compiled unchanged against small Pico/Arduino
+  stand-ins, driven by `NISPSCore`, built to WebAssembly with Emscripten and
+  run in an AudioWorklet behind an HTML panel. Compiles the engine out of
+  `nisps-sc/`.
 - **`memlrhythm-max/`** — a Max package with the firmware's two rhythm
   generators, `meml.euclid~` (from MODE_ELYSIAMORFS / MODE_MEMLCELIUM) and
   `meml.ratioseq~` (the RatioSeqEngine behind MODE_MEMLCELIUM), plus a host
