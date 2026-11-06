@@ -40,15 +40,17 @@
 // #define MODE_MEMLCELIUM
 // #define MODE_MIXMASTERMEML
 // #define MODE_D50
-// #define MODE_TR6S
-// #define MODE_TR8S
+// #define MODE_TR6S   // also a preset in MODE_PARAMSITE
+// #define MODE_TR8S   // also a preset in MODE_PARAMSITE
 // #define MODE_ROBOOP
 // #define MODE_DJFX
-// #define MODE_MOPHO
-// #define MODE_MICROQ
-// #define MODE_ERICA_FBANK
-// #define MODE_STEAMPIPE
+// #define MODE_MOPHO   // also a preset in MODE_PARAMSITE
+// #define MODE_MICROQ   // also a preset in MODE_PARAMSITE
+// #define MODE_BLOFELD   // also a preset in MODE_PARAMSITE
+// #define MODE_ERICA_FBANK   // also a preset in MODE_PARAMSITE
+// #define MODE_STEAMPIPE   // also a preset in MODE_PARAMSITE
 // #define MODE_SYNTHOSORIUM
+// #define MODE_PARAMSITE
 
 #include "modes/MEMLNautMode.hpp"
 #ifdef MODE_PAFSYNTH
@@ -135,6 +137,10 @@
   #include "modes/MEMLNautModeMicroQ.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeMicroQ
 #endif
+#ifdef MODE_BLOFELD
+  #include "modes/MEMLNautModeBlofeld.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeBlofeld
+#endif
 #ifdef MODE_MOPHO
   #include "modes/MEMLNautModeMopho.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeMopho
@@ -150,6 +156,10 @@
 #ifdef MODE_SYNTHOSORIUM
   #include "modes/MEMLNautModeSynthosorium.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeSynthosorium
+#endif
+#ifdef MODE_PARAMSITE
+  #include "modes/MEMLNautModeParamsite.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeParamsite
 #endif
 
 MEMLNAUT_MODE_TYPE AUDIO_MEM MEMLNautModeHub;
@@ -303,6 +313,7 @@ void loop() {
     100000)
 
   currentMode->loopCore0();
+  if (midi_interf) midi_interf->PollUSB();   // USB MIDI (TinyUSB builds only)
 }
 
 

@@ -15,6 +15,9 @@
 #   scripts/build.sh -u -p /dev/ttyACM0
 #   scripts/build.sh -c               # clean build dir first
 #   scripts/build.sh -v               # verbose arduino-cli output
+#   scripts/build.sh -m               # build with USB MIDI (TinyUSB stack); the
+#                                     # MEMLNaut also appears as a USB MIDI port.
+#                                     # Use for Paramsite.
 
 set -euo pipefail
 
@@ -30,6 +33,7 @@ UPLOAD=0
 PORT=""
 CLEAN=0
 VERBOSE=0
+USB_MIDI=0
 
 usage() {
     grep -E '^#( |$)' "${BASH_SOURCE[0]}" | sed -E 's/^#( )?//' | sed -n '/^Usage:/,$p'
@@ -41,6 +45,7 @@ while [[ $# -gt 0 ]]; do
         -p|--port) PORT="$2"; shift 2 ;;
         -c|--clean) CLEAN=1; shift ;;
         -v|--verbose) VERBOSE=1; shift ;;
+        -m|--usb-midi) USB_MIDI=1; shift ;;
         -h|--help) usage; exit 0 ;;
         *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
     esac
@@ -50,6 +55,8 @@ command -v arduino-cli >/dev/null 2>&1 || {
     echo "error: arduino-cli not found on PATH. Install it: https://arduino.github.io/arduino-cli/latest/installation/" >&2
     exit 1
 }
+
+[[ "${USB_MIDI}" -eq 1 ]] && FQBN="${FQBN},usbstack=tinyusb"
 
 if ! arduino-cli board details -b "${FQBN}" >/dev/null 2>&1; then
     echo "error: board ${FQBN} is not available to arduino-cli." >&2
