@@ -31,7 +31,7 @@
 // #define MODE_BREAKOR
 // #define MODE_BRAYKORE
 // #define MODE_VERBFX
-// #define MODE_NAUTLINEAR
+#define MODE_NAUTLINEAR
 // #define MODE_SAXFX
 // #define MODE_CHUNKYBITS
 // #define MODE_INFINIBITS
@@ -39,7 +39,7 @@
 // #define MODE_ELYSIAMORFS
 // #define MODE_MEMLCELIUM
 // #define MODE_MIXMASTERMEML
-#define MODE_MEMLACIIID
+// #define MODE_MEMLACIIID
 // #define MODE_D50
 // #define MODE_TR6S   // also a preset in MODE_PARAMSITE
 // #define MODE_TR8S   // also a preset in MODE_PARAMSITE
