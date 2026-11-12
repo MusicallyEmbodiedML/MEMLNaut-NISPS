@@ -3,7 +3,6 @@
 #include "../src/memllib/interface/MIDIInOut.hpp"
 #include "./AudioApps/DJFXAudioApp.hpp"
 #include "./DJRLView.hpp"
-#include "./DJFXEnableView.hpp"
 #include "../src/memllib/hardware/memlnaut/MEMLNaut.hpp"
 #include "../src/memllib/audio/FocusManager.hpp"
 #include "../src/memllib/hardware/memlnaut/display/BlockSelectView.hpp"
@@ -37,7 +36,7 @@ public:
 
 
     void setupInterface() {
-        auto djView = std::make_shared<DJRLView>("RL", DJFXAudioApp<>::kN_Params);
+        auto djView = std::make_shared<DJRLView>("Neural Net", DJFXAudioApp<>::kN_Params);
         djView->setBPMCallback([this](float bpm) {
             audioAppDJFX.setBPMQueued(bpm);
         });
@@ -64,6 +63,7 @@ public:
                 uint32_t mask;
                 memcpy(&mask, data, 4);
                 audioAppDJFX.enableMask_ = mask;
+                syncEnableView();
             }
         });
 
@@ -116,6 +116,15 @@ public:
 
     }
 
+    std::shared_ptr<BlockSelectView> enableView_;
+
+    // Reflect the effect enable mask on the FX Enable tiles.
+    void syncEnableView() {
+        if (!enableView_) return;
+        const uint32_t mask = audioAppDJFX.enableMask_;
+        for (size_t i = 0; i < 10; i++) enableView_->setAltColour(i, (mask >> i) & 1u);
+    }
+
     String getHelpTitle() {
         return "LiveFX Mode";
     }
@@ -162,7 +171,16 @@ public:
 
         interface.addInputSourceView(false);  // no MIDI CC Out screen for this mode
 
-        auto enableView = std::make_shared<DJFXEnableView>("FX Enable", &audioAppDJFX.enableMask_);
+        // FX Enable — one toggle per effect, MEMLCelium style (highlighted = on).
+        enableView_ = std::make_shared<BlockSelectView>(
+            "FX Enable", TFT_DARKGREEN, 10, 80, 70, TFT_WHITE,
+            std::vector<String>{ "Allpass", "Flanger", "Chorus", "Grain 1", "Grain 2", "Delay", "Downsamp", "Stutter", "Ring Mod", "Reverb" }, TFT_GREEN, 2);
+        syncEnableView();
+        enableView_->SetOnSelectCallback([this](size_t id) {
+            audioAppDJFX.enableMask_ ^= (1u << (id - 1));
+            syncEnableView();
+        });
+        auto enableView = enableView_;
         MEMLNaut::Instance()->disp->InsertViewAfter(focusView, enableView);
 
         // VU meters (In L/R, Out L/R) — sits right after FX Enable. The view arms the

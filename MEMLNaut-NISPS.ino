@@ -44,7 +44,8 @@
 // #define MODE_TR6S   // also a preset in MODE_PARAMSITE
 // #define MODE_TR8S   // also a preset in MODE_PARAMSITE
 // #define MODE_ROBOOP
-#define MODE_DJFX
+// #define MODE_DJFX
+#define MODE_VOICEFX
 // #define MODE_MOPHO   // also a preset in MODE_PARAMSITE
 // #define MODE_MICROQ   // also a preset in MODE_PARAMSITE
 // #define MODE_BLOFELD   // also a preset in MODE_PARAMSITE
@@ -137,6 +138,10 @@
 #ifdef MODE_DJFX
   #include "modes/MEMLNautModeDJFX.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeDJFX
+#endif
+#ifdef MODE_VOICEFX
+  #include "modes/MEMLNautModeVoiceFX.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeVoiceFX
 #endif
 #ifdef MODE_MICROQ
   #include "modes/MEMLNautModeMicroQ.hpp"

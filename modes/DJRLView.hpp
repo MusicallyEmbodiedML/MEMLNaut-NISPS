@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../src/memllib/hardware/memlnaut/display/RLView.hpp"
+#include "../src/memllib/hardware/memlnaut/display/ButtonView.hpp"
 #include <functional>
 #include <array>
 #include <cmath>
@@ -17,22 +18,20 @@ public:
     void setBPMCallback(BPMCallback cb) { bpmCallback_ = cb; }
     float getBPM() const { return bpm_; }
 
-    void OnDraw() override {
-        RLView::OnDraw();
-        drawTapButton();
-    }
-
-    void OnTouchDown(size_t x, size_t y) override {
-        if (!inTapArea(x)) return;
-        tapPressed_ = true;
-        redraw();
-    }
-
-    void OnTouchUp(size_t x, size_t y) override {
-        if (!inTapArea(x)) return;
-        tapPressed_ = false;
-        recordTap();
-        redraw();
+    // Tap-tempo button: a ButtonView tile (same style as the Focus/Enable buttons) in
+    // the right quarter of the screen, labelled with the current BPM. The tile draws its
+    // own pressed state; each release is a tap.
+    void OnSetup() override {
+        RLView::OnSetup();
+        const int bx = area.x + (area.w * 3) / 4;
+        const rect bounds = { bx + kTapGap, area.y + kTapGap,
+                              area.w / 4 - 2 * kTapGap, area.h - kStatusBarHeight - 2 * kTapGap };
+        tapButton_ = std::make_shared<ButtonView>(bpmLabel(), 1, TFT_GREENYELLOW);
+        tapButton_->SetReleaseCallback([this](size_t) {
+            recordTap();
+            tapButton_->setLabel(bpmLabel());
+        });
+        AddSubView(tapButton_, bounds);
     }
 
 protected:
@@ -43,25 +42,9 @@ protected:
 private:
     static constexpr size_t   kMaxTaps      = 4;
     static constexpr uint32_t kTapTimeoutMs = 2000;
+    static constexpr int      kTapGap       = 6;
 
-    bool inTapArea(size_t x) const {
-        return x >= static_cast<size_t>(area.x + (area.w * 3) / 4);
-    }
-
-    void drawTapButton() {
-        int bx = area.x + (area.w * 3) / 4;
-        int bw = area.w / 4;
-        int bh = area.h - kStatusBarHeight;
-        uint16_t col = tapPressed_ ? TFT_PURPLE : TFT_GREEN;
-        // Draw directly (no large sprite alloc — that failed intermittently and left the
-        // button blank). Reliable and cheap, so it repaints fine on every OnDraw.
-        scr->fillRect(bx, area.y, bw, bh, col);
-        scr->drawRect(bx, area.y, bw, bh, TFT_WHITE);
-        scr->setTextFont(2);
-        scr->setTextColor(TFT_WHITE, col);
-        scr->setTextDatum(TL_DATUM);
-        scr->drawString(String((int)roundf(bpm_)) + " bpm", bx + 4, area.y + bh / 2 - 8);
-    }
+    String bpmLabel() const { return String((int)roundf(bpm_)) + " bpm"; }
 
     void recordTap() {
         uint32_t now = millis();
@@ -81,8 +64,8 @@ private:
     }
 
     BPMCallback bpmCallback_;
+    std::shared_ptr<ButtonView> tapButton_;
     float    bpm_       {100.f};
-    bool     tapPressed_{false};
     uint32_t lastTapMs_ {0};
     size_t   tapCount_  {0};
     std::array<uint32_t, kMaxTaps> intervals_{};
