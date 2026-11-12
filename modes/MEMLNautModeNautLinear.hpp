@@ -159,14 +159,6 @@ public:
     void addViews() {
         interface.addInputSourceView(false);  // no MIDI CC Out screen for this mode
 
-        // VU meters (In L/R, Out L/R) — right after the RL outputs screen. The view
-        // arms the audio-core measurement only while it is on screen.
-        auto vuView = std::make_shared<VUMeterView>(
-            "VU", std::vector<String>{ "In L", "In R", "Out L", "Out R" },
-            VUMeter::levels,
-            [](bool a) { VUMeter::active = a; });
-        MEMLNaut::Instance()->disp->InsertViewAfter(interface.nnOutputsGraphView, vuView);
-
         // Focus screen — same items as Enable (11 or 12 -> 2 rows of 6). Selecting groups
         // latches every param outside them (none selected = all live). Highlight = focused.
         updateActiveDims();
@@ -204,7 +196,7 @@ public:
         optionsView->SetOnSelectCallback([this](size_t id) {
             setFeedbackPreMakeup(id == 1);
         });
-        MEMLNaut::Instance()->disp->InsertViewAfter(vuView, optionsView);
+        MEMLNaut::Instance()->disp->InsertViewAfter(enableView, optionsView);
         setFeedbackPreMakeup(audioAppNautLinear.fbPreMakeup_);  // reflect initial state
     };
 

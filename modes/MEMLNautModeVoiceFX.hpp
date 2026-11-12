@@ -7,7 +7,6 @@
 #include "../src/memllib/audio/FocusManager.hpp"
 #include "../src/memllib/hardware/memlnaut/display/BlockSelectView.hpp"
 #include "../src/memllib/hardware/memlnaut/display/VUMeterView.hpp"
-#include "../src/memllib/hardware/memlnaut/display/MixerView.hpp"
 #include "../VUMeter.hpp"
 #include "MEMLNautMode.hpp"
 #include <memory>
@@ -41,10 +40,6 @@ public:
 
 
     void setupInterface() {
-        // Saved input gain, read now: core 1 configures the codec (getCodecConfig) as
-        // soon as the interface is ready, before addViews() runs.
-        loadInputGain();
-
         auto djView = std::make_shared<DJRLView>("Neural Net", VoiceFXAudioApp<>::kN_Params);
         djView->setBPMCallback([this](float bpm) {
             audioAppVoiceFX.setBPMQueued(bpm);
@@ -184,30 +179,6 @@ public:
         auto enableView = enableView_;
         MEMLNaut::Instance()->disp->InsertViewAfter(focusView, enableView);
 
-        // VU meters (In L/R, Out L/R) — sits right after FX Enable. The view arms the
-        // audio-core measurement only while it is on screen.
-        auto vuView = std::make_shared<VUMeterView>(
-            "VU", std::vector<String>{ "In L", "In R", "Out L", "Out R" },
-            VUMeter::levels,
-            [](bool a) { VUMeter::active = a; });
-        MEMLNaut::Instance()->disp->InsertViewAfter(enableView, vuView);
-
-        // Input Gain — the codec's analog line-in gain (before the ADC), 0..+22.5 dB in
-        // 1.5 dB steps. Applied as you drag; saved to flash when you let go.
-        gainView_ = std::make_shared<MixerView>("Input Gain", std::vector<String>{"Gain"}, TFT_CYAN);
-        gainView_->setRange(0.f, kGainStepDb * 15.f, kGainStepDb * kDefaultGainLevel, kGainStepDb);
-        gainView_->setFormatter([](float db) { return String("+") + String(db, 1) + " dB"; });
-        gainView_->setValue(0, kGainStepDb * gainLevel_);
-        gainView_->setOnChange([this](size_t, float db) {
-            const uint8_t level = static_cast<uint8_t>(roundf(db / kGainStepDb));
-            if (level != gainLevel_) {
-                gainLevel_ = level;
-                AudioDriver::SetLineInLevel(level);
-            }
-        });
-        gainView_->setOnCommit([this]() { saveInputGain(); });
-        MEMLNaut::Instance()->disp->InsertViewAfter(vuView, gainView_);
-
     };
 
     void setupAudio(float sample_rate) {
@@ -223,32 +194,7 @@ public:
 
     __force_inline void processAnalysisParams() { mlMixin.processAnalysisParams(); }
 
-    AudioDriver::codec_config_t getCodecConfig() {
-        auto cfg = audioAppVoiceFX.GetDriverConfig();
-        cfg.line_level = gainLevel_;   // saved input gain
-        return cfg;
-    }
-
-    // ── Input gain (codec line-in level), saved in flash ──
-    static constexpr float   kGainStepDb = 1.5f;
-    static constexpr uint8_t kDefaultGainLevel = 3;    // +4.5 dB, the previous fixed setting
-    static constexpr const char* kGainFile = "/voicefx_gain.bin";
-    uint8_t gainLevel_ = kDefaultGainLevel;
-    std::shared_ptr<MixerView> gainView_;
-
-    void saveInputGain() {
-        FILE* f = fopen(kGainFile, "wb");
-        if (f) { fwrite(&gainLevel_, 1, 1, f); fclose(f); }
-    }
-
-    void loadInputGain() {
-        FILE* f = fopen(kGainFile, "rb");
-        if (!f) return;
-        uint8_t level = kDefaultGainLevel;
-        const bool ok = fread(&level, 1, 1, f) == 1;
-        fclose(f);
-        if (ok && level <= 15) gainLevel_ = level;
-    }
+    AudioDriver::codec_config_t getCodecConfig() { return audioAppVoiceFX.GetDriverConfig(); }
 
     void loopCore0() {}
 

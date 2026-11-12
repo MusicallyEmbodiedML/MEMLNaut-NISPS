@@ -17,6 +17,7 @@
 //sound
 #include "src/memllib/audio/AudioAppBase.hpp"
 #include "VUMeter.hpp"
+#include "LevelsView.hpp"
 
 //interface
 #include "src/memllib/hardware/memlnaut/display/XYPadView.hpp"
@@ -252,6 +253,8 @@ void setup() {
   currentMode->setupInterface();
 
   // Setup interface with memory barrier protection
+  // Saved input gain, before core 1 configures the codec (setup1).
+  InputGain::load();
   WRITE_VOLATILE(interface_ready, true);
   Serial.println("Bound interface to MEMLNaut.");
 
@@ -264,6 +267,9 @@ void setup() {
 
 
   currentMode->addViews();
+
+  // Levels: VU meters + input gain, in every mode.
+  MEMLNaut::Instance()->disp->AddView(std::make_shared<LevelsView>("Levels"));
 
   std::shared_ptr<MessageView> helpView = std::make_shared<MessageView>("Help");
   String title = currentMode->getHelpTitle();
@@ -374,7 +380,11 @@ void setup1() {
   AudioDriver::SetBlockCallback(audio_block_callback);
 
   // Start audio driver
-  AudioDriver::Setup(currentMode->getCodecConfig());
+  {
+    auto codecConfig = currentMode->getCodecConfig();
+    codecConfig.line_level = InputGain::level;  // saved input gain (Levels screen)
+    AudioDriver::Setup(codecConfig);
+  }
 
   WRITE_VOLATILE(core_1_ready, true);
   while (!READ_VOLATILE(core_0_ready)) {

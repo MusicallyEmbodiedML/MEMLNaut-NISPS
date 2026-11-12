@@ -143,15 +143,11 @@ public:
 
         float mix = x.L + x.R;
 
-        smoother.Process(neuralNetOutputs.data(), smoothParams.data());
-
-        //mapping
-        currentVoiceSpace(smoothParams);
-
-        //XFADE
-
-        const float filterBankDelayFBLevel = sqrtf(filterBankDelayXFade);
-        const float filterBankDelayFBLevelInv = sqrtf(1.f - filterBankDelayXFade);
+        // Control rate (every kCtrlInterval samples): parameter smoothing, the voice-space
+        // mapping (a std::function, ~47 params) and the mix weights. Per sample these
+        // overloaded the audio core (~1.8 ms per 1 ms block).
+        if (ctrlCount_ == 0) updateControl();
+        if (++ctrlCount_ >= kCtrlInterval) ctrlCount_ = 0;
 
         /////////////////// FILTERBANK
 
@@ -183,12 +179,6 @@ public:
         float delayed2 = enableShortDelay ? ddelay2.read(ddelayTime2) : 0.f;
         ddelay2.write(delayIn + (ddelayFeedback2 * delayed2));
 
-        float a = fminf(delayMorph * 2.f, 1.f);
-        float b = fmaxf(delayMorph * 2.f - 1.f, 0.f);
-        constexpr float kEqualMix = 0.57735f; // 1/sqrt(3), constant-power equal mix
-        float w_short  = kEqualMix + delayBlend * (sqrtf(1.f - a)                    - kEqualMix);
-        float w_medium = kEqualMix + delayBlend * (sqrtf(a) * sqrtf(1.f - b)         - kEqualMix);
-        float w_long   = kEqualMix + delayBlend * (sqrtf(a) * sqrtf(b)               - kEqualMix);
         float delaySum = (w_short * delayed2) + (w_medium * delayed1) + (w_long * delayed);
 
         //////////////// VERB
@@ -216,7 +206,7 @@ public:
         verbOut = allp2.allpass(verbOut, SIZE_allp2, allp2fb);
         verbOut = allp3.allpass(verbOut, SIZE_allp3, allp3fb);
 
-        float y= (sqrtf(verbVsDelayLevel) * delaySum) + (sqrtf(1.f - verbVsDelayLevel) * verbOut);
+        float y= (delayLevel_ * delaySum) + (verbLevel_ * verbOut);
 
         //feedback 
         delaysFB = delaySum;
@@ -226,7 +216,7 @@ public:
 
 
         // Mix dry
-        y = (y * sqrtf(wetdry_mix_)) + (mix * sqrtf(1.f - wetdry_mix_));
+        y = (y * wetAmt_) + (mix * dryAmt_);
 
 
         stereosample_t ret { y, y };
@@ -346,7 +336,36 @@ protected:
     float verbVsDelayLevel{0}, delayToVerbLevel{0}, filterBankDelayXFade{0};
     float delayMorph{0.5f}, delayBlend{0.f};
 
-    OnePoleSmoother<kN_Params> smoother{150.f, (float)kSampleRate};
+    // Smoothing runs at control rate (every kCtrlInterval samples); same 150 ms time.
+    static constexpr size_t kCtrlInterval = 16;
+    OnePoleSmoother<kN_Params> smoother{150.f, (float)kSampleRate / kCtrlInterval};
+    size_t ctrlCount_{0};
+
+    // control-rate results used per sample
+    float filterBankDelayFBLevel{0.f}, filterBankDelayFBLevelInv{1.f};
+    float w_short{0.57735f}, w_medium{0.57735f}, w_long{0.57735f};
+    float delayLevel_{0.7071f}, verbLevel_{0.7071f};
+    float wetAmt_{0.7071f}, dryAmt_{0.7071f};
+
+    void updateControl() {
+        smoother.Process(neuralNetOutputs.data(), smoothParams.data());
+        currentVoiceSpace(smoothParams);   // mapping
+
+        filterBankDelayFBLevel    = sqrtf(filterBankDelayXFade);
+        filterBankDelayFBLevelInv = sqrtf(1.f - filterBankDelayXFade);
+
+        const float a = fminf(delayMorph * 2.f, 1.f);
+        const float b = fmaxf(delayMorph * 2.f - 1.f, 0.f);
+        constexpr float kEqualMix = 0.57735f; // 1/sqrt(3), constant-power equal mix
+        w_short  = kEqualMix + delayBlend * (sqrtf(1.f - a)            - kEqualMix);
+        w_medium = kEqualMix + delayBlend * (sqrtf(a) * sqrtf(1.f - b) - kEqualMix);
+        w_long   = kEqualMix + delayBlend * (sqrtf(a) * sqrtf(b)       - kEqualMix);
+
+        delayLevel_ = sqrtf(verbVsDelayLevel);
+        verbLevel_  = sqrtf(1.f - verbVsDelayLevel);
+        wetAmt_ = sqrtf(wetdry_mix_);
+        dryAmt_ = sqrtf(1.f - wetdry_mix_);
+    }
     
     // maxiDynamicsLite limiter;
 

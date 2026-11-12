@@ -37,6 +37,11 @@ rare paths.
   MEMLAciiid, PAF Synth, Bunty, ChannelStrip, Braykore, BreakOr, Elysiamorfs,
   GlitchSeqEngine, RatioSeqEngine, FMPatternGen, and the vendored DaisySP
   `PitchShifter` crossfade gains (`src/daisysp/Effects/pitchshifter.h`).
+- `maxiFilter::lopass`/`hipass` are inline in `maximilian.h` (were flash calls from
+  `maximilian.cpp`; VerbFX's reverb called lopass 8 times per sample).
+- VerbFX ran its parameter smoother, voice-space mapping (`std::function`) and eleven
+  `sqrtf` mix weights every sample: ~1.8 ms per 1 ms block, constantly dropping
+  audio. Now every 16 samples (smoother retimed to match): ~390 us.
 - Result: no per-sample float-library calls left in any mode's audio path. Left:
   ChannelStrip's `maxiConvert::dbsToAmp` (`powf`, below), Braykore's per-trigger
   `powf`, and NautLinear's control-rate update.
@@ -45,7 +50,7 @@ rare paths.
 
 ### memllib
 - `maximilian.cpp` functions used per sample live in flash because they are not
-  inline: `maxiFilter::lopass` (Bunty, VerbFX), `maxiRingBuf::push`,
+  inline: `maxiRingBuf::push`,
   `maxiDynamicsLite::envToRatio`, `maxiConvert::ampToDbs`/`dbsToAmp` (ChannelStrip,
   which also use double `log10`/`pow`). Inline them in the header, or mark them
   `__not_in_flash_func`.

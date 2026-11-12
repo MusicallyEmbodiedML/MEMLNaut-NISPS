@@ -17,7 +17,7 @@
 #   scripts/build.sh -v               # verbose arduino-cli output
 #   scripts/build.sh -m               # build with USB MIDI (TinyUSB stack); the
 #                                     # MEMLNaut also appears as a USB MIDI port.
-#                                     # Use for Paramsite.
+#                                     # Use for Paramsite and PAF Synth (play it over USB).
 
 set -euo pipefail
 
@@ -27,7 +27,10 @@ BUILD_DIR="${REPO_DIR}/build"
 # The board's default flash layout is "16MB (no FS)", which leaves LittleFS
 # unmountable and silently drops every flash-persisted setting (input source,
 # dislike mode, CC numbers...). Always build with a filesystem partition.
-FQBN="rp2040:rp2040:memlnaut:flash=16777216_1048576"
+# opt=Optimize3 (-O3): the board default is -Os (size), which made the audio code
+# far slower (VerbFX ~1.8 ms per 1 ms block at -Os vs ~0.5 ms at -O2/-O3). The
+# releases before 1.2.0 were built at -O3.
+FQBN="rp2040:rp2040:memlnaut:flash=16777216_1048576,opt=Optimize3"
 
 UPLOAD=0
 PORT=""

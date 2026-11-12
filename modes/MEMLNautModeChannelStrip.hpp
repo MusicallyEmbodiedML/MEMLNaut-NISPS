@@ -126,14 +126,6 @@ public:
         });
         MEMLNaut::Instance()->disp->AddView(bypassView);
 
-        // VU meters (In L/R, Out L/R) — sits right after the bypass view. The view arms the
-        // audio-core measurement only while it is on screen.
-        auto vuView = std::make_shared<VUMeterView>(
-            "VU", std::vector<String>{ "In L", "In R", "Out L", "Out R" },
-            VUMeter::levels,
-            [](bool a) { VUMeter::active = a; });
-        MEMLNaut::Instance()->disp->InsertViewAfter(bypassView, vuView);
-
         // Mark which NN output dims are live based on the focused groups.
         auto updateActiveDims = [this]() {
             const uint32_t mask = focusManager.getSelectedMask();

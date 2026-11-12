@@ -183,14 +183,6 @@ public:
         auto enableView = enableView_;
         MEMLNaut::Instance()->disp->InsertViewAfter(focusView, enableView);
 
-        // VU meters (In L/R, Out L/R) — sits right after FX Enable. The view arms the
-        // audio-core measurement only while it is on screen.
-        auto vuView = std::make_shared<VUMeterView>(
-            "VU", std::vector<String>{ "In L", "In R", "Out L", "Out R" },
-            VUMeter::levels,
-            [](bool a) { VUMeter::active = a; });
-        MEMLNaut::Instance()->disp->InsertViewAfter(enableView, vuView);
-
         // Options screen — single toggle for DJ Mode. On (highlighted): joystick drives
         // wet/dry, RVY1 = DJ filter. Off: RVY1 drives wet/dry, no filtering.
         auto optionsView = std::make_shared<BlockSelectView>(

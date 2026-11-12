@@ -33,3 +33,6 @@
 
 .ai
 build
+
+# Release firmware builds (attached to GitHub releases, not committed)
+build/releases_*/
