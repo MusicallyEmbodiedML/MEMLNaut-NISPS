@@ -78,3 +78,22 @@ rare paths.
   `expf`/`powf`/`tanhf`. Minor; could move to RAM.
 - **std::function** invokers reachable from the callback in most modes (flash);
   check which ones run per sample.
+
+## Core 0 (control loop: network, controls, display)
+
+Profiled on the device with a model loaded (LiveFX, 2026-11-12):
+
+- **Fixed — touch polling**: TFT_eSPI `getTouch()` blocked for ~33 ms per call (five
+  samples, each with `delay()` debouncing), and the panel's idle pressure (~150-190)
+  is above the threshold of 20 that was passed, so it always ran in full. The control
+  loop managed ~35 passes per second instead of 200. `DisplayDriver::PollTouch` now
+  reads the pressure once (~30 us) and only calls `getTouch()` above 500 (pressed
+  reads ~1000-3000). Loop: ~30 ms -> ~3 ms average, ~185 passes per second.
+- **Fixed — memlp training**: RMSProp uses the FPU `vsqrt` instead of a `sqrtf` call
+  per weight, and `TrainBatch` takes pointers so `InterfaceRL` no longer copies the
+  replay memory into new vectors every tick. Training ~0.77 ms per tick with a full
+  memory; inference ~80 us.
+- **Still to do — display redraw**: `DisplayDriver::Draw()` takes ~13 ms per redraw
+  (30 per second) on a busy screen, ~40% of core 0 and the cause of 16 ms worst-case
+  loop passes. Candidates: draw only what changed, or push the frame with DMA without
+  blocking.
