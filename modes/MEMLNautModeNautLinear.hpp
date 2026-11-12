@@ -31,7 +31,18 @@ public:
     MachineListeningMixin mlMixin;
 
     // Focus groups, same items and order as the Enable screen.
-    static constexpr size_t kNFocusGroups = 10;
+    // same items as the Enable screen: one per shaper, then FB, Pre and Damp
+    static constexpr size_t kNFocusGroups = NautLinearAudioApp<>::kNEnables;
+    static std::vector<String> itemNames() {
+        std::vector<String> v{ "Hard", "Tanh", "Knee", "Diode", "Oct", "Asym", "Sine", "Cheby" };
+#if NAUTLINEAR_TABLE
+        v.push_back("Table");
+#endif
+        v.push_back("FB"); v.push_back("Pre"); v.push_back("Damp");
+        return v;
+    }
+    // Saved enable layout: 3 = 8 shapers, FB, Pre, Damp; 4 = with the table.
+    static constexpr uint8_t kSaveVersion = NAUTLINEAR_TABLE ? 4 : 3;
     FocusManager<NautLinearAudioApp<>::kN_Params, kNFocusGroups> focusManager;
 
 
@@ -40,9 +51,9 @@ public:
         // RL screen: label the outputs by section (see NautLinearParams).
         interface.nnOutputsGraphView->setGroups(
             { NautLinearParams::AUTOLEVEL, NautLinearParams::HARD_TRIM,
-              NautLinearParams::MIX, NautLinearParams::POST_CUTOFF,
-              NautLinearParams::FB_MASTER, NautLinearParams::GRAIN_LEN },
-            { "Pre", "Shape", "Mix", "Post", "FB", "Grain" });
+              NautLinearParams::MIX, NautLinearParams::DAMP_SLEW,
+              NautLinearParams::FB_MASTER },
+            { "Pre", "Shape", "Mix", "Damp", "FB" });
         interface.setRVY1Override([this](float value) {
             audioAppNautLinear.setWetDryQueued(value);
         });
@@ -50,18 +61,25 @@ public:
         interface.setModeInfo("nautlinear", "NautLinear");
 
         // Per-model extra data: byte 0 = feedback tap (1 = pre-makeup, 0 = post),
-        // bytes 1-2 = enable mask (little-endian; bits as NautLinearAudioApp::enableMask_).
+        // bytes 1-2 = enable mask (little-endian; bits as NautLinearAudioApp::enableMask_),
+        // byte 3 = extra-data version (kSaveVersion: which enable layout the mask uses).
         interface.setExtraSaveCallback([]() -> std::vector<uint8_t> {
             const uint32_t mask = audioAppNautLinear.enableMask_;
             return { static_cast<uint8_t>(audioAppNautLinear.fbPreMakeup_ ? 1 : 0),
                      static_cast<uint8_t>(mask & 0xff),
-                     static_cast<uint8_t>((mask >> 8) & 0xff) };
+                     static_cast<uint8_t>((mask >> 8) & 0xff),
+                     kSaveVersion };
         });
         interface.setExtraLoadCallback([this](const uint8_t* data, uint16_t size, uint16_t) {
             if (size >= 1) setFeedbackPreMakeup(data[0] != 0);
-            // older files have no mask: everything enabled
-            setEnableMask(size >= 3 ? (data[1] | (static_cast<uint32_t>(data[2]) << 8))
-                                    : NautLinearAudioApp<>::kEnableAll);
+            uint32_t mask = NautLinearAudioApp<>::kEnableAll;  // no mask saved: all on
+            if (size >= 3) {
+                mask = data[1] | (static_cast<uint32_t>(data[2]) << 8);
+                // a different layout: keep the first eight shapers, turn the rest on
+                if (size < 4 || data[3] != kSaveVersion)
+                    mask = (mask & 0xffu) | (NautLinearAudioApp<>::kEnableAll & ~0xffu);
+            }
+            setEnableMask(mask);
         });
 
         setupFocus();
@@ -69,19 +87,18 @@ public:
         interfacePtr = make_non_owning(interface);
     }
 
-    // Focus groups: one per shaper (its own params + its mix level, feedback gain and
-    // grain send), FB and Delay. Shared params belong to every group they affect.
-    // Auto-level, pre-EQ and the post filter belong to no group, so they hold still
-    // whenever any focus is active.
+    // Focus groups: one per shaper incl. Table (its own params + its mix level and feedback gain),
+    // FB, Pre (preamp and auto-level) and Damp. Shared params belong to every group
+    // they affect.
     void setupFocus() {
         using namespace NautLinearParams;
-        const char* names[kNFocusGroups] = { "Hard", "Tanh", "Knee", "Diode", "Oct",
-                                             "Asym", "Sine", "Cheby", "FB", "Delay" };
+        const std::vector<String> names = itemNames();
         for (size_t g = 0; g < kNFocusGroups; ++g) focusManager.setGroupName(g, names[g]);
 
+        using App = NautLinearAudioApp<>;
         constexpr uint32_t kHard = 1u << 0, kTanh = 1u << 1, kKnee = 1u << 2, kDiode = 1u << 3,
                            kOct  = 1u << 4, kAsym = 1u << 5, kSine = 1u << 6, kCheby = 1u << 7,
-                           kFB   = 1u << 8, kDelay = 1u << 9;
+                           kFB = App::kEnFeedback, kPre = App::kEnPre, kDamp = App::kEnDamp;
         std::array<uint32_t, NautLinearAudioApp<>::kN_Params> m = {};
 
         m[DRIVE] = kHard | kTanh | kKnee | kDiode | kOct;  // master drive
@@ -96,15 +113,17 @@ public:
         m[CHEBY_IN] = kCheby;
         for (size_t h = 0; h < kChebyHarmonics; ++h) m[CHEBY_T2 + h] = kCheby;
 
-        // per-shaper mix / feedback / grain send
-        for (size_t i = 0; i < 8; ++i) {
-            m[MIX + i]        = 1u << i;
-            m[FB_SHAPER + i]  = (1u << i) | kFB;
-            m[GRAIN_SEND + i] = (1u << i) | kDelay;
+#if NAUTLINEAR_TABLE
+        m[TABLE_IN] = m[TABLE_HARM] = m[TABLE_OE] = App::kEnTable;
+#endif
+        // per-shaper mix / feedback
+        for (size_t i = 0; i < NautLinearAudioApp<>::kNShapers; ++i) {
+            m[MIX + i]       = 1u << i;
+            m[FB_SHAPER + i] = (1u << i) | kFB;
         }
         m[FB_MASTER] = kFB;
-        m[GRAIN_LEN] = m[GRAIN_START] = m[GRAIN_FB] = m[GRAIN_PITCH] = m[GRAIN_SPREAD] = kDelay;
-        m[GRAIN_FB_SEND] = kFB | kDelay;
+        m[AUTOLEVEL] = m[PRE_DRIVE] = m[PRE_ASYM] = m[PRE_SAG] = m[PRE_SAG_REC] = kPre;
+        m[DAMP_SLEW] = m[DAMP_SAT] = kDamp;
 
         focusManager.setParamGroups(m);
         interface.paramTransformHook = [this](std::vector<float>& p) {
@@ -148,13 +167,12 @@ public:
             [](bool a) { VUMeter::active = a; });
         MEMLNaut::Instance()->disp->InsertViewAfter(interface.nnOutputsGraphView, vuView);
 
-        // Focus screen — same items as Enable. Selecting groups latches every param
-        // outside them (none selected = all live). Highlight = focused.
+        // Focus screen — same items as Enable (11 or 12 -> 2 rows of 6). Selecting groups
+        // latches every param outside them (none selected = all live). Highlight = focused.
         updateActiveDims();
         auto focusView = std::make_shared<BlockSelectView>(
-            "Focus", TFT_DARKGREY, kNFocusGroups, 58, 70, TFT_WHITE,
-            std::vector<String>{ "Hard", "Tanh", "Knee", "Diode", "Oct",
-                                 "Asym", "Sine", "Cheby", "FB", "Delay" },
+            "Focus", TFT_DARKGREY, kNFocusGroups, 48, 70, TFT_WHITE,
+            itemNames(),
             TFT_GREENYELLOW, 2);
         focusView->SetOnSelectCallback([this, focusView](size_t id) {
             const size_t groupIdx = id - 1;
@@ -165,12 +183,11 @@ public:
         });
         MEMLNaut::Instance()->disp->InsertViewAfter(interface.nnOutputsGraphView, focusView);
 
-        // Enable screen — one toggle per shaper, plus feedback and grain delay.
-        // Highlight = enabled. 10 buttons -> 2 rows of 5.
+        // Enable screen — one toggle per shaper, plus feedback, preamp and damper.
+        // Highlight = enabled. 11 (12 with the table) buttons -> 2 rows of 6.
         enableView = std::make_shared<BlockSelectView>(
-            "Enable", TFT_DARKGREEN, 10, 58, 70, TFT_WHITE,
-            std::vector<String>{ "Hard", "Tanh", "Knee", "Diode", "Oct",
-                                 "Asym", "Sine", "Cheby", "FB", "Delay" },
+            "Enable", TFT_DARKGREEN, NautLinearAudioApp<>::kNEnables, 48, 70, TFT_WHITE,
+            itemNames(),
             TFT_GREEN, 2);
         enableView->SetOnSelectCallback([this](size_t id) {
             setEnableMask(audioAppNautLinear.enableMask_ ^ (1u << (id - 1)));
@@ -210,7 +227,8 @@ public:
         mask &= NautLinearAudioApp<>::kEnableAll;
         audioAppNautLinear.enableMask_ = mask;
         if (enableView) {
-            for (size_t i = 0; i < 10; ++i) enableView->setAltColour(i, (mask >> i) & 1u);
+            for (size_t i = 0; i < NautLinearAudioApp<>::kNEnables; ++i)
+                enableView->setAltColour(i, (mask >> i) & 1u);
         }
     }
 
