@@ -1,5 +1,6 @@
 #ifndef __BRAYKORE_AUDIO_APP_HPP__
 #define __BRAYKORE_AUDIO_APP_HPP__
+#include "../../src/memllib/synth/FastMath.hpp"
 
 #include "../../src/memllib/audio/AudioAppBase.hpp"
 #include "../../src/memllib/interface/InterfaceBase.hpp"
@@ -62,14 +63,14 @@ public:
             float bp = seqEngine.getBarPhasor();
 
             // FM1: slice position, quantized to 0.125 steps
-            float p1 = fmodf(bp * fmState1.phasorMul, 1.f);
+            float p1 = FastMath::fmod1(bp * fmState1.phasorMul);
             float v1 = fmPair(p1, fmState1.carrierFreq, fmState1.modFreq,
                               fmState1.modIndex, fmState1.fbLevel,
                               fmState1.carrier, fmState1.modulator);
             fmValue = floorf((v1 + 1.f) * 0.5f * 8.f) * 0.125f;
 
             // FM2: pitch, quantized to {0.5, 1.0, 2.0}
-            float p2 = fmodf(bp * fmState2.phasorMul, 1.f);
+            float p2 = FastMath::fmod1(bp * fmState2.phasorMul);
             float v2 = fmPair(p2, fmState2.carrierFreq, fmState2.modFreq,
                               fmState2.modIndex, fmState2.fbLevel,
                               fmState2.carrier, fmState2.modulator);
@@ -82,7 +83,7 @@ public:
                 currentPlaybackRate = flashPlaybackRate * pitchFactor;
 
                 // FM3: bitcrush depth, 4–16 bits, sampled at each trigger
-                float p3 = fmodf(bp * fmState3.phasorMul, 1.f);
+                float p3 = FastMath::fmod1(bp * fmState3.phasorMul);
                 float v3 = fmPair(p3, fmState3.carrierFreq, fmState3.modFreq,
                                   fmState3.modIndex, fmState3.fbLevel,
                                   fmState3.carrier, fmState3.modulator);
@@ -95,9 +96,9 @@ public:
         }
         float s = beatPlayer.process(currentPlaybackRate);
         s = roundf(s * bitCrushLevels) / bitCrushLevels;
-        float shape = sinf(s * kTwoPi);
-        shape = sinf(((shape * kTwoPi) * sineShapeGain) + sineShapeASym);
-        s = tanhf(s + (shape * sineShapeMix));
+        float shape = FastMath::sinTurns(s);  // sin(s * kTwoPi)
+        shape = FastMath::sin(((shape * kTwoPi) * sineShapeGain) + sineShapeASym);
+        s = FastMath::tanh(s + (shape * sineShapeMix));
         return { s, s };
     }
 

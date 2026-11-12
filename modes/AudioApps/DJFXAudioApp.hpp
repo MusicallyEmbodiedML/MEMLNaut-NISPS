@@ -127,22 +127,32 @@ public:
         if ((en & kFX_Stutter) && stutterMix_ > 0.f)
             mix = stutterGate_.process(mix, stutterPeriod_, stutterDuty_, stutterMix_);
 
-        // Makeup gain
-        mix = tanhf(mix * 4.0f);
+        // Makeup gain (inline tanh: tanhf is a wrapped float routine in flash)
+        mix = fastTanh(mix * 4.0f);
 
         // Reverb — on the wet FX bus, produces a stereo pair
         float wetL = mix, wetR = mix;
         if ((en & kFX_Reverb) && reverbMix_ > 0.f) {
             auto [revL, revR] = reverb_.process(mix);
-            const float rWet = sqrtf(reverbMix_);
-            const float rDry = sqrtf(1.f - reverbMix_);
+            if (reverbMix_ != revMixCached_) {   // sqrt only when the mix changes
+                revMixCached_ = reverbMix_;
+                rWet_ = sqrtf(reverbMix_);
+                rDry_ = sqrtf(1.f - reverbMix_);
+            }
+            const float rWet = rWet_;
+            const float rDry = rDry_;
             wetL = mix * rDry + revL * rWet;
             wetR = mix * rDry + revR * rWet;
         }
 
         // Wet/dry crossfade — stereo wet added to stereo dry (equal power).
-        const float dryAmt = sqrtf(1.f - wetdry_mix_);
-        const float wetAmt = sqrtf(wetdry_mix_);
+        if (wetdry_mix_ != wetdryCached_) {      // sqrt only when wet/dry changes
+            wetdryCached_ = wetdry_mix_;
+            wetAmt_ = sqrtf(wetdry_mix_);
+            dryAmt_ = sqrtf(1.f - wetdry_mix_);
+        }
+        const float dryAmt = dryAmt_;
+        const float wetAmt = wetAmt_;
         return { wetL * wetAmt + x.L * dryAmt, wetR * wetAmt + x.R * dryAmt };
     }
 
@@ -162,6 +172,14 @@ public:
         grainDelay2.setup(sample_rate);
         reverb_.setup(sample_rate);
         sampleRate_ = sample_rate;
+    }
+
+    // Padé tanh, exact ±1 at |x| = 3.
+    static float __force_inline fastTanh(float x) {
+        if (x > 3.f)  return 1.f;
+        if (x < -3.f) return -1.f;
+        const float x2 = x * x;
+        return x * (27.f + x2) / (27.f + 9.f * x2);
     }
 
     static float __force_inline effectMix(float raw) {
@@ -338,9 +356,11 @@ protected:
     BitCrusher        downSampler_;
     RingMod           ringMod_;
     StutterGate       stutterGate_;
-    maxiOsc           apLFO_;
+    FastSineOsc       apLFO_;
     ReverbI16<4096>   reverb_;   // reverted from ReverbI16Large (startup crash — likely RAM)
     float             reverbMix_{0.f};
+    float revMixCached_{-1.f}, rWet_{0.f}, rDry_{1.f};
+    float wetdryCached_{-1.f}, wetAmt_{0.f}, dryAmt_{1.f};
 
     float wetdry_mix_{0.5f};
     float grainCrossfade_{0.5f};

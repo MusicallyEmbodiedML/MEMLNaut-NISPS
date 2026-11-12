@@ -5,6 +5,7 @@
 #include <functional>
 #include <cstddef>
 #include <cmath>
+#include "../../src/memllib/synth/FastMath.hpp"
 
 // RatioSeqEngine variant for MixMasterMEML. Each sequence splits its cycle into NNOTES
 // segments by integer ratios (one note per segment, as in RatioSeqEngine), but instead
@@ -82,7 +83,7 @@ public:
 
             for (size_t i = 0; i < NSEQUENCES; i++) {
                 auto& seq = states[i];
-                const float seqPhasor = fmodf(barPhasor * seq.phasorMul + seq.phaseOffset, 1.f);
+                const float seqPhasor = FastMath::fmod1(barPhasor * seq.phasorMul + seq.phaseOffset);
                 float level = 0.f;
                 const int note = activeNote(seq, seqPhasor);
                 if (note >= 0) {

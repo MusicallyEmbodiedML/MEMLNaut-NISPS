@@ -2,6 +2,7 @@
 #define __FM_PATTERN_GEN_HPP__
 
 #include <cmath>
+#include "../../src/memllib/synth/FastMath.hpp"
 
 #ifndef TWO_PI
 #define TWO_PI 6.28318530717958647692f
@@ -18,9 +19,9 @@ struct FMOp {
     float __force_inline process(float phase, float modIn,
                                  float freqMul, float modIndex,
                                  float fbLevel) {
-        float p = fmodf(phase * freqMul + modIndex * modIn + fbLevel * prevOutput, 1.f);
+        float p = FastMath::fmod1(phase * freqMul + modIndex * modIn + fbLevel * prevOutput);
         if (p < 0.f) p += 1.f;
-        float out = sinf(TWO_PI * p);
+        float out = FastMath::sinTurns(p);  // sin(TWO_PI * p)
         prevOutput = out;
         return out;
     }

@@ -126,7 +126,7 @@ public:
                 for(auto &seq: fmSeqStates) {
                     //update phasor
                     float seqPhasor = barPhasor * seq.phasorMul;
-                    seqPhasor = fmodf(seqPhasor + seq.phaseOffset, 1.f); // Wrap phasor to [0,1]
+                    seqPhasor = FastMath::fmod1(seqPhasor + seq.phaseOffset); // Wrap phasor to [0,1]
                     float fmVal = fmPair(seqPhasor, seq.carrierFreq, seq.modFreq, seq.modIndex, seq.fbLevel, seq.carrier, seq.modulator);
                     fmVal = (fmVal + 1.f) * 0.5f; // Normalize to [0,1]
                     fmVal *= 127.f; // Scale to MIDI range

@@ -6,6 +6,7 @@
 #include <functional>
 #include <cstddef>
 #include <cmath>
+#include "../../src/memllib/synth/FastMath.hpp"
 
 template<size_t NSEQUENCES, size_t NRATIOS=3, size_t NAMPRATIOS=2>
 class RatioSeqEngine {
@@ -76,7 +77,7 @@ public:
             for (size_t i = 0; i < NSEQUENCES; i++) {
                 auto &seq = states[i];
                 float seqPhasor = barPhasor * seq.phasorMul;
-                seqPhasor = fmodf(seqPhasor + seq.phaseOffset, 1.f);
+                seqPhasor = FastMath::fmod1(seqPhasor + seq.phaseOffset);
 
                 bool trig    = ratioSeq<NRATIOS>   (seqPhasor, seq.phaseOffset, seq.ratioSum,    seq.ratios,    seq.pulseWidth);
                 bool highAmp = ratioSeq<NAMPRATIOS>(seqPhasor, seq.phaseOffset, seq.ampRatioSum, seq.ampRatios, 0.5f);

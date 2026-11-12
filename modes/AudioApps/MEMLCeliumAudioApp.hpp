@@ -228,8 +228,8 @@ public:
 
         float mix = v0 + v1 + v2;
 
-        float shape = sinf(mix * TWOPI);
-        shape = sinf(((shape * TWOPI) * sineShapeGain) + sineShapeASym);
+        float shape = FastMath::sinTurns(mix);  // sin(mix * TWOPI)
+        shape = FastMath::sin(((shape * TWOPI) * sineShapeGain) + sineShapeASym);
         mix = mix + (shape * sineShapeMix);
 
         mix = lowBoost.play(mix);
@@ -237,7 +237,7 @@ public:
         mix = highBoost.play(mix);
 
         
-        mix = tanhf(mix);
+        mix = FastMath::tanh(mix);
 
         stereosample_t ret { mix, mix };
         return ret;

@@ -139,7 +139,7 @@ public:
                 float bp = seqEngine.getBarPhasor();
                 for (size_t i = 0; i < kNFMSeqs; i++) {
                     auto& s = fmStates[i];
-                    float p = fmodf(bp * s.phasorMul + s.phaseOffset, 1.f);
+                    float p = FastMath::fmod1(bp * s.phasorMul + s.phaseOffset);
                     if (p < 0.f) p += 1.f;
                     float v = fmPair(p, s.carrierFreq, s.modFreq, s.modIndex, s.fbLevel,
                                      s.carrier, s.modulator);

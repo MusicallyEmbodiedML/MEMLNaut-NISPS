@@ -217,8 +217,8 @@ public:
         if (!bypassAll) {
 
             if (!bypassPrePostGain) {
-                y = tanhf(y * preGain);
-                y1 = tanhf(y1 * preGain);
+                y = FastMath::tanh(y * preGain);
+                y1 = FastMath::tanh(y1 * preGain);
             }
             if (!bypassInFilters)
             {
@@ -245,8 +245,8 @@ public:
                 y1 = dyn1.compress(y1, compThreshold, compRatio, 0.f);
             }
             if (!bypassPrePostGain) {
-                y = tanhf(y * postGain);
-                y1 = tanhf(y1 * postGain);
+                y = FastMath::tanh(y * postGain);
+                y1 = FastMath::tanh(y1 * postGain);
             }
         }
         // Parallel dry/wet blend (equal-power), driven by the RVY1 knob.

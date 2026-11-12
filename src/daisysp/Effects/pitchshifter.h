@@ -9,6 +9,7 @@ https://opensource.org/licenses/MIT.
 #pragma once
 #ifndef DSY_PITCHSHIFTER_H
 #define DSY_PITCHSHIFTER_H
+#include "../../memllib/synth/FastMath.hpp"
 #include <stdint.h>
 #include <cmath>
 #ifdef USE_ARM_DSP
@@ -130,8 +131,9 @@ class PitchShifter
         gain_[0] = arm_sin_f32(fade1 * (float)M_PI);
         gain_[1] = arm_sin_f32(fade2 * (float)M_PI);
 #else
-        gain_[0] = sinf(fade1 * PI_F);
-        gain_[1] = sinf(fade2 * PI_F);
+        // sin(fade * pi) = sin(2pi * fade/2); inline (sinf is a flash call on the MEMLNaut)
+        gain_[0] = FastMath::sinTurns(fade1 * 0.5f);
+        gain_[1] = FastMath::sinTurns(fade2 * 0.5f);
 #endif
 
         // Handle Delay Writing

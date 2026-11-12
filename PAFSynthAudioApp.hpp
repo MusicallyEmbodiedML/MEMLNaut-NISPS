@@ -146,8 +146,8 @@ public:
 // 
         y = y + (rm * rmGain);
 
-        float shape = sinf(y * TWOPI);
-        shape = sinf(((shape * TWOPI) * sineShapeGain) + sineShapeASym);
+        float shape = FastMath::sinTurns(y);  // sin(y * TWOPI)
+        shape = FastMath::sin(((shape * TWOPI) * sineShapeGain) + sineShapeASym);
         y = y + (shape * sineShapeMix);
 
     #ifdef ARPEGGIATOR
@@ -186,7 +186,7 @@ public:
     //     y *= noteVel;
     // #endif
 
-        y = tanhf(y);
+        y = FastMath::tanh(y);
         
         float d1 = (dl1.play(y, delayMax, dlfb) * dl1mix);
         y = y + d1;// + d2;

@@ -299,8 +299,8 @@ public:
         float mix = v0 + v1 + v2;
 
         if (voiceEnableMask_ & kEnableShaper) {
-            float shape = sinf(mix * TWOPI);
-            shape = sinf(((shape * TWOPI) * sineShapeGain) + sineShapeASym);
+            float shape = FastMath::sinTurns(mix);  // sin(mix * TWOPI)
+            shape = FastMath::sin(((shape * TWOPI) * sineShapeGain) + sineShapeASym);
             mix = mix + (shape * sineShapeMix);
         }
 
@@ -323,8 +323,8 @@ public:
         // Mixer: the Delay fader trims the wet return only; Master drives the final tanh.
         const float wetGain = wetMix * mixGain_[kMixDelay];
         const float master = mixGain_[kMixMaster];
-        stereosample_t ret { tanhf((dry + wet.L * wetGain + bass) * master),
-                             tanhf((dry + wet.R * wetGain + bass) * master) };
+        stereosample_t ret { FastMath::tanh((dry + wet.L * wetGain + bass) * master),
+                             FastMath::tanh((dry + wet.R * wetGain + bass) * master) };
         return ret;
     }
 

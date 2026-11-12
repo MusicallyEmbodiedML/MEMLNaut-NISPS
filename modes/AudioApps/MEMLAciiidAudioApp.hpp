@@ -152,8 +152,8 @@ public:
         if (enableMask_ & kEnableOpenHat) mix += openHat * kHatGain * mixGain_[kMixOpenHat];
 
         if (enableMask_ & kEnableShaper) {
-            float shape = sinf(mix * TWOPI);
-            shape = sinf(((shape * TWOPI) * sineShapeGain_) + sineShapeASym_);
+            float shape = FastMath::sinTurns(mix);  // sin(mix * TWOPI)
+            shape = FastMath::sin(((shape * TWOPI) * sineShapeGain_) + sineShapeASym_);
             mix = mix + (shape * sineShapeMix_);
         }
 
@@ -169,8 +169,8 @@ public:
         // Mixer: the Delay fader trims the wet return only; Master drives the final tanh.
         const float wetGain = wetMix * mixGain_[kMixDelay];
         const float master = mixGain_[kMixMaster];
-        stereosample_t ret { tanhf((dry + wet.L * wetGain) * master),
-                             tanhf((dry + wet.R * wetGain) * master) };
+        stereosample_t ret { FastMath::tanh((dry + wet.L * wetGain) * master),
+                             FastMath::tanh((dry + wet.R * wetGain) * master) };
         return ret;
     }
 

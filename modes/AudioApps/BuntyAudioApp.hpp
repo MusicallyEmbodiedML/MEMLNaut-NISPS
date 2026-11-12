@@ -2,6 +2,7 @@
 #define __BUNTY_AUDIO_APP_HPP__
 
 #include "../../src/memllib/audio/AudioAppBase.hpp" // Added missing include
+#include "../../src/memllib/synth/FastMath.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -205,8 +206,9 @@ public:
         paf2.play(x1, 1, freq2, freq2 + paf2_cf * freq2, paf2_bw, paf2_vib, paf2_vfr, paf2_shift, 1);
         float vp2 = *x1;
         float v0out = (vp0 + vp1 + vp2) * v0envval;
-        float shape = sinf(v0out * TWOPI);
-        shape = sinf(((0.2f * TWOPI) * 2.f) + 0.1f);
+        // NB: the second line overwrites shape with a constant (~0.50), as before.
+        float shape = FastMath::sinTurns(v0out);  // sin(v0out * TWOPI)
+        shape = FastMath::sin(((0.2f * TWOPI) * 2.f) + 0.1f);
         v0out = v0out + (shape * 0.6f);
         v0out *= 0.6f;
 
