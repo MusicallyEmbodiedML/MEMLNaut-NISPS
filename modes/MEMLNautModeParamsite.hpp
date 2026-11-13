@@ -126,8 +126,13 @@ public:
         channel_ = loadChannel();
         midi_interf->SetMIDISendChannel(channel_);
         midi_interf->SetMIDINoteChannel(channel_);
+        loadThru();
+        applyThru();
         if (P.notesThru) {
+            // Older keyboard pass-through, re-channelled to the synth: only used when
+            // MIDI thru is off, so notes aren't sent twice.
             midi_interf->SetNoteCallback([this](bool note_on, uint8_t note, uint8_t velocity) {
+                if (thruHwHw_ || thruHwUsb_ || thruUsbHw_) return;
                 if (note_on) midi_interf->sendNoteOn(note, velocity);
                 else         midi_interf->sendNoteOff(note, velocity);
             });
@@ -142,6 +147,7 @@ public:
         addLearnView();
         addChannelView();
         addModeView();
+        addOptionsView();
     }
 
     __force_inline void analyse(stereosample_t x) { mlMixin.analyse(x); }
@@ -162,6 +168,10 @@ public:
         if (channelSavePending_) {
             channelSavePending_ = false;
             if (channel_ != savedChannel_) saveChannel(channel_);
+        }
+        if (thruSavePending_) {
+            thruSavePending_ = false;
+            saveThru();
         }
         if (restartPending_) {
             restartPending_ = false;
@@ -196,6 +206,13 @@ private:
     volatile uint8_t channel_ = 1;
     uint8_t savedChannel_ = 1;
     volatile bool channelSavePending_ = false;
+
+    // MIDI thru (Options screen): one setting for every MIDI mode, on by default.
+    static constexpr const char* kThruFile = "/paramsite_thru.bin";
+    volatile bool thruHwHw_ = true;     // hardware in -> hardware out
+    volatile bool thruHwUsb_ = true;    // hardware in -> USB out
+    volatile bool thruUsbHw_ = true;    // USB in -> hardware out
+    volatile bool thruSavePending_ = false;
 
     // MIDI Learn: while the page has control, only the chosen CC is sent, as a
     // slow sweep, so a DAW or plugin's MIDI learn picks up that CC alone.
@@ -508,7 +525,56 @@ private:
         MEMLNaut::Instance()->disp->AddView(modeView);
     }
 
+    // ---- Options: MIDI thru ----
+
+    void addOptionsView() {
+        const bool usb = MIDIInOut::HasUSBMIDI();
+        std::vector<String> labels{"HW>HW"};
+        if (usb) { labels.push_back("HW>USB"); labels.push_back("USB>HW"); }
+        volatile bool* flags[3] = {&thruHwHw_, &thruHwUsb_, &thruUsbHw_};
+        auto view = std::make_shared<BlockSelectView>(
+            "Options", TFT_DARKGREY, labels.size(), 120, 60, TFT_WHITE, labels, TFT_GREENYELLOW, 2);
+        for (size_t i = 0; i < labels.size(); i++) view->setAltColour(i, *flags[i]);
+        view->SetMessage("MIDI thru: input > output");
+        view->SetOnSelectCallback([this, view, n = labels.size()](size_t id) {
+            const size_t idx = id - 1;
+            if (idx >= n) return;
+            volatile bool* f[3] = {&thruHwHw_, &thruHwUsb_, &thruUsbHw_};
+            *f[idx] = !*f[idx];
+            view->setAltState(idx, *f[idx]);
+            applyThru();
+            thruSavePending_ = true;          // flash is written in loopCore0
+        });
+        MEMLNaut::Instance()->disp->AddView(view);
+    }
+
     // ---- Files ----
+
+    void applyThru() {
+        if (midi_interf) midi_interf->SetThru(thruHwHw_, thruHwUsb_, thruUsbHw_);
+    }
+
+    // [0x5B][bit 0 = HW>HW, bit 1 = HW>USB, bit 2 = USB>HW]
+    void loadThru() {
+        FILE* f = fopen(kThruFile, "rb");
+        if (!f) return;
+        uint8_t b[2];
+        if (fread(b, 1, 2, f) == 2 && b[0] == 0x5B) {
+            thruHwHw_  = b[1] & 1;
+            thruHwUsb_ = (b[1] >> 1) & 1;
+            thruUsbHw_ = (b[1] >> 2) & 1;
+        }
+        fclose(f);
+    }
+
+    void saveThru() {
+        FILE* f = fopen(kThruFile, "wb");
+        if (!f) { Serial.println("Paramsite: failed to save MIDI thru"); return; }
+        const uint8_t b[2] = {0x5B, static_cast<uint8_t>((thruHwHw_ ? 1 : 0) | (thruHwUsb_ ? 2 : 0) |
+                                                       (thruUsbHw_ ? 4 : 0))};
+        fwrite(b, 1, 2, f);
+        fclose(f);
+    }
 
     size_t loadModeChoice() {
         FILE* f = fopen(kModeFile, "rb");
